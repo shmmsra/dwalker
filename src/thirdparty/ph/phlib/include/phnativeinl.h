@@ -1144,7 +1144,7 @@ PhGetJobBasicAndIoAccounting(
 {
     return NtQueryInformationJobObject(
         JobHandle,
-        (JOBOBJECTINFOCLASS)JobObjectBasicAndIoAccountingInformation,
+        JobObjectBasicAndIoAccountingInformation,
         BasicAndIoAccounting,
         sizeof(JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION),
         NULL
@@ -1160,7 +1160,7 @@ PhGetJobBasicLimits(
 {
     return NtQueryInformationJobObject(
         JobHandle,
-        (JOBOBJECTINFOCLASS)JobObjectBasicLimitInformation,
+        JobObjectBasicLimitInformation,
         BasicLimits,
         sizeof(JOBOBJECT_BASIC_LIMIT_INFORMATION),
         NULL
@@ -1176,7 +1176,7 @@ PhGetJobExtendedLimits(
 {
     return NtQueryInformationJobObject(
         JobHandle,
-        (JOBOBJECTINFOCLASS)JobObjectExtendedLimitInformation,
+        JobObjectExtendedLimitInformation,
         ExtendedLimits,
         sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION),
         NULL
@@ -1192,7 +1192,7 @@ PhGetJobBasicUiRestrictions(
 {
     return NtQueryInformationJobObject(
         JobHandle,
-        (JOBOBJECTINFOCLASS)JobObjectBasicUIRestrictions,
+        JobObjectBasicUIRestrictions,
         BasicUiRestrictions,
         sizeof(JOBOBJECT_BASIC_UI_RESTRICTIONS),
         NULL
