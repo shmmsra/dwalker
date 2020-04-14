@@ -12,7 +12,6 @@ project(${DWALKER})
 set(CMAKE_VERBOSE_MAKEFILE on)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(EXECUTABLE_TYPE WIN32)
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
@@ -31,7 +30,7 @@ file(GLOB_RECURSE DWALKER_SOURCE_FILES
     "${DWALKER_PATH}/source/*.cpp")
 
 set(DWALKER_OUTPUT_NAME "dwalker")
-add_executable(${DWALKER} ${EXECUTABLE_TYPE} ${DWALKER_HEADER_FILES} ${DWALKER_SOURCE_FILES})
+add_executable(${DWALKER} WIN32 ${DWALKER_HEADER_FILES} ${DWALKER_SOURCE_FILES})
 
 target_link_libraries(${DWALKER}
     "Winhttp.lib"
@@ -54,6 +53,7 @@ source_group(TREE ${PROJECT_ROOT_DIR}/src FILES ${DWALKER_HEADER_FILES} ${DWALKE
 
 # Headers
 target_include_directories(${DWALKER} PRIVATE
+    "${DWALKER_PATH}/include"
     "${THIRDPARTY_PHLIB_PATH}/phnt/include"
     "${THIRDPARTY_PHLIB_PATH}/phlib/include"
     "${THIRDPARTY_PHLIB_PATH}/phlib/jsonc"
