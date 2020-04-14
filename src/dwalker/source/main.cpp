@@ -1,35 +1,58 @@
 // main.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
+#ifndef DWAPP_H
+#define DWAPP_H
+
 #include <ph.h>
+#include <guisup.h>
+#include <provider.h>
+#include <filestream.h>
+#include <fastlock.h>
+#include <treenew.h>
+#include <graph.h>
+#include <circbuf.h>
+#include <dltmgr.h>
+#include <phnet.h>
+
+#endif DWAPP_H
+
+#include <iostream>
+#include <PEManager.h>
+#include <PHLib.h>
 
 using namespace std;
 
+#define BINARY_PATH L".\\dwalker.exe"
+
 class DWalker {
 public:
-    void DumpDependencyChain() {
+    void DumpDependencyChain(const wstring& filePath) {
         cout << "Dump dependency chain ...\n";
+        PEManager* peManager = new PEManager(filePath);
+        if (peManager->Load()) {
+            cout << "Binary loaded successfully...\n";
+            cout << "IsWow64Dll: " << peManager->IsWow64Dll() << endl;
+        } else {
+            cout << "Binary load failure...\n";
+        }
     }
 };
 
-int main()
+int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
-    std::cout << "Hello World!\n";
+    PHLib* phlib = PHLib::GetInstance();
 
     // always the first call to make
-    // Phlib.InitializePhLib();
+    if (!phlib->InitializePhLib()) {
+        return 1;
+    }
+
+    wstring filePath;
+    filePath = BINARY_PATH;
+
+    DWalker dw;
+    dw.DumpDependencyChain(filePath);
 
     return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file

@@ -32,13 +32,16 @@ file(GLOB_RECURSE DWALKER_SOURCE_FILES
 set(DWALKER_OUTPUT_NAME "dwalker")
 add_executable(${DWALKER} WIN32 ${DWALKER_HEADER_FILES} ${DWALKER_SOURCE_FILES})
 
+# /Gz - explicitly set stdcall calling convention
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Gz")
+
 target_link_libraries(${DWALKER}
     "Winhttp.lib"
     "${PROJECT_ROOT_DIR}/build/$<CONFIG>/phlib/phlib.lib")
 
 set_target_properties(${DWALKER} PROPERTIES OUTPUT_NAME ${DWALKER_OUTPUT_NAME})
 set_target_properties(${DWALKER} PROPERTIES
-    LINK_FLAGS /SUBSYSTEM:CONSOLE
+    LINK_FLAGS "/SUBSYSTEM:CONSOLE /DELAYLOAD:advapi32.dll /DELAYLOAD:aclui.dll /DELAYLOAD:comdlg32.dll /DELAYLOAD:comctl32.dll /DELAYLOAD:gdi32.dll /DELAYLOAD:iphlpapi.dll /DELAYLOAD:oleaut32.dll /DELAYLOAD:ole32.dll /DELAYLOAD:shell32.dll /DELAYLOAD:shlwapi.dll /DELAYLOAD:user32.dll /DELAYLOAD:uxtheme.dll /DELAYLOAD:version.dll /DELAYLOAD:winhttp.dll /DELAYLOAD:winsta.dll /DELAYLOAD:ws2_32.dll"
     OUTPUT_NAME ${DWALKER_OUTPUT_NAME}
     # set the build output directory
     LIBRARY_OUTPUT_DIRECTORY "${PROJECT_OUTPUT_DIRECTORY}"
@@ -55,6 +58,4 @@ source_group(TREE ${PROJECT_ROOT_DIR}/src FILES ${DWALKER_HEADER_FILES} ${DWALKE
 target_include_directories(${DWALKER} PRIVATE
     "${DWALKER_PATH}/include"
     "${THIRDPARTY_PHLIB_PATH}/phnt/include"
-    "${THIRDPARTY_PHLIB_PATH}/phlib/include"
-    "${THIRDPARTY_PHLIB_PATH}/phlib/jsonc"
-    "${THIRDPARTY_PHLIB_PATH}/phlib/mxml")
+    "${THIRDPARTY_PHLIB_PATH}/phlib/include")
