@@ -1,9 +1,45 @@
 #pragma once
 
 #include <string>
+#include <vector>
+
 #include <PE.h>
 
 using namespace std;
+
+struct PeImport {
+    unsigned short Hint;
+    unsigned short Ordinal;
+    string Name;
+    string ModuleName;
+    bool ImportByOrdinal;
+    bool DelayImport;
+
+    PeImport(const PPH_MAPPED_IMAGE_IMPORT_DLL importDll, size_t Index);
+    PeImport(const PeImport& other);
+    ~PeImport();
+};
+
+struct PeImportDll {
+public:
+    long Flags;
+    string Name;
+    long NumberOfEntries;
+    vector<PeImport> ImportList;
+
+    // constructors
+    PeImportDll(const PPH_MAPPED_IMAGE_IMPORTS& PvMappedImports, size_t ImportDllIndex);
+    PeImportDll(const PeImportDll& other);
+
+    // destructors
+    ~PeImportDll();
+
+    // getters
+    bool IsDelayLoad();
+
+private:
+    PPH_MAPPED_IMAGE_IMPORT_DLL ImportDll;
+};
 
 struct PeProperties {
     short Machine;
@@ -48,7 +84,7 @@ public:
     // List<PeExport ^>^ GetExports();
 
     // Return the list of functions imported by the PE, bundled by Dll name
-    // List<PeImportDll ^>^ GetImports();
+    vector<PeImportDll> GetImports();
 
     // Retrieve the manifest embedded within the PE
     // Return an empty string if there is none.
@@ -72,7 +108,7 @@ private:
     PE* m_Impl;
 
     // local cache for imports and exports list
-    // List<PeImportDll ^>^ m_Imports;
+    vector<PeImportDll> m_Imports;
     // List<PeExport ^>^  m_Exports;
     bool m_ExportsInit;
     bool m_ImportsInit;

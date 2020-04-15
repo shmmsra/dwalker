@@ -1,5 +1,83 @@
 #include <PEManager.h>
 
+PeImport::PeImport(
+    _In_ const PPH_MAPPED_IMAGE_IMPORT_DLL importDll,
+    _In_ size_t Index
+) {
+    PH_MAPPED_IMAGE_IMPORT_ENTRY importEntry;
+
+    if (NT_SUCCESS(PhGetMappedImageImportEntry((PPH_MAPPED_IMAGE_IMPORT_DLL)importDll, (ULONG)Index, &importEntry))) {
+        this->Hint = importEntry.NameHint;
+        this->Ordinal = importEntry.Ordinal;
+        this->DelayImport = (importDll->Flags) & PH_MAPPED_IMAGE_DELAY_IMPORTS;
+
+        // TODO(unknown): Should check if wstring is required for Name and ModuleName
+        this->Name = (importEntry.Name == nullptr) ? "" : string(importEntry.Name);
+        this->ModuleName = (importDll->Name == nullptr) ? "" : string(importDll->Name);
+
+        this->ImportByOrdinal = (importEntry.Name == nullptr);
+    }
+}
+
+PeImport::PeImport(
+    _In_ const PeImport& other
+) {
+    this->Hint = other.Hint;
+    this->Ordinal = other.Ordinal;
+    this->DelayImport = other.DelayImport;
+    this->Name = other.Name;
+    this->ModuleName = other.ModuleName;
+    this->ImportByOrdinal = other.ImportByOrdinal;
+}
+
+PeImport::~PeImport() {
+}
+
+PeImportDll::PeImportDll(
+    _In_ const PPH_MAPPED_IMAGE_IMPORTS& PvMappedImports,
+    _In_ size_t ImportDllIndex
+) : ImportDll(new PH_MAPPED_IMAGE_IMPORT_DLL) {
+    if (!NT_SUCCESS(PhGetMappedImageImportDll(PvMappedImports, (ULONG)ImportDllIndex, ImportDll))) {
+        Flags = 0;
+        Name = string("## PeImportDll error: Invalid DllName ##");  // TODO(unknown): Should check if wstring is required
+        NumberOfEntries = 0;
+        return;
+    }
+
+    Flags = ImportDll->Flags;
+    Name = (ImportDll->Name == nullptr) ? "" : string(ImportDll->Name); // TODO(unknown): Should check if wstring is required
+    NumberOfEntries = ImportDll->NumberOfEntries;
+
+    for (size_t IndexImport = 0; IndexImport < (size_t)NumberOfEntries; IndexImport++) {
+        ImportList.push_back(PeImport(ImportDll, IndexImport));
+    }
+}
+
+PeImportDll::~PeImportDll() {
+    delete ImportDll;
+}
+
+PeImportDll::PeImportDll(
+    _In_ const PeImportDll& other
+) : ImportDll(new PH_MAPPED_IMAGE_IMPORT_DLL) {
+    memcpy(ImportDll, other.ImportDll, sizeof(PH_MAPPED_IMAGE_IMPORT_DLL));
+
+    Flags = other.Flags;
+    Name = other.Name;
+    NumberOfEntries = other.NumberOfEntries;
+
+    for (size_t IndexImport = 0; IndexImport < (size_t)NumberOfEntries; IndexImport++) {
+        ImportList.push_back(PeImport(other.ImportList[(int)IndexImport]));
+    }
+}
+
+bool PeImportDll::IsDelayLoad() {
+    return this->Flags & PH_MAPPED_IMAGE_DELAY_IMPORTS;
+}
+
+
+
+
 PEManager::PEManager(const wstring& filepath) : loadSuccessful(false), m_ExportsInit(false), m_ImportsInit(false) {
     this->m_Impl = new PE();
     this->filepath = filepath;
@@ -74,4 +152,30 @@ bool PEManager::InitProperties() {
 
 bool PEManager::IsWow64Dll() {
     return ((properties->Machine & 0xffff) == IMAGE_FILE_MACHINE_I386);
+}
+
+vector<PeImportDll> PEManager::GetImports() {
+    if (m_ImportsInit)
+        return m_Imports;
+
+    m_ImportsInit = true;
+
+    if (!loadSuccessful)
+        return m_Imports;
+
+    // Standard Imports
+    if (NT_SUCCESS(PhGetMappedImageImports(&m_Impl->m_PvImports, &m_Impl->m_PvMappedImage))) {
+        for (size_t IndexDll = 0; IndexDll < m_Impl->m_PvImports.NumberOfDlls; IndexDll++) {
+            m_Imports.push_back(PeImportDll(&m_Impl->m_PvImports, IndexDll));
+        }
+    }
+
+    // Delayed Imports
+    if (NT_SUCCESS(PhGetMappedImageDelayImports(&m_Impl->m_PvDelayImports, &m_Impl->m_PvMappedImage))) {
+        for (size_t IndexDll = 0; IndexDll < m_Impl->m_PvDelayImports.NumberOfDlls; IndexDll++) {
+            m_Imports.push_back(PeImportDll(&m_Impl->m_PvDelayImports, IndexDll));
+        }
+    }
+
+    return m_Imports;
 }

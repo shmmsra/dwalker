@@ -18,26 +18,13 @@
 #endif DWAPP_H
 
 #include <iostream>
-#include <PEManager.h>
+
+#include <DWalker.h>
 #include <PHLib.h>
 
 using namespace std;
 
 #define BINARY_PATH L".\\dwalker.exe"
-
-class DWalker {
-public:
-    void DumpDependencyChain(const wstring& filePath) {
-        cout << "Dump dependency chain ...\n";
-        PEManager* peManager = new PEManager(filePath);
-        if (peManager->Load()) {
-            cout << "Binary loaded successfully...\n";
-            cout << "IsWow64Dll: " << peManager->IsWow64Dll() << endl;
-        } else {
-            cout << "Binary load failure...\n";
-        }
-    }
-};
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
@@ -52,6 +39,9 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     filePath = BINARY_PATH;
 
     DWalker dw;
+    dw.DumpDependencyChain(filePath);
+    dw.DumpDependencyChain(filePath);
+    dw.DumpDependencyChain(filePath);
     dw.DumpDependencyChain(filePath);
 
     return 0;
