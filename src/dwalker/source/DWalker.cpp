@@ -20,5 +20,7 @@ bool DWalker::DumpDependencyChain(const wstring& filePath) {
     const bool is32Bit = peManager->IsWow64Dll();
     vector<PeImportDll> imports = peManager->GetImports();
 
+    pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, L"DWalker.exe", SxsEntries(), {});
+
     return true;
 }

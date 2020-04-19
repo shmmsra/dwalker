@@ -4,6 +4,7 @@
 #include <map>
 
 #include <PEManager.h>
+#include <FindPE.h>
 
 using namespace std;
 
@@ -16,4 +17,9 @@ private:
 
 public:
     PEManager* GetBinary(const wstring& PePath);
+    pair<ModuleSearchStrategy, PEManager*> ResolveModule(
+        PEManager* RootPe,
+        wstring ModuleName,
+        SxsEntries SxsCache,
+        vector<wstring> CustomSearchFolders);
 };

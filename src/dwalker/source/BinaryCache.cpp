@@ -1,5 +1,7 @@
 #include <BinaryCache.h>
 
+#include <filesystem>
+
 string BinaryCache::GetBinaryHash(const wstring& PePath) {
     // TODO(unknown): Fix the hash calculation logic
     unsigned int hash = 0;
@@ -41,4 +43,59 @@ PEManager* BinaryCache::GetBinary(const wstring& PePath) {
     // TODO(unknown): Convert any paths to an absolute one
 
     return ShadowBinary;
+}
+
+/*
+public static Tuple<ModuleSearchStrategy, PE> ResolveModule(string ModuleName) {
+    PE RootPe = LoadPe(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "ntdll.dll"));
+    string WorkingDirectory = Path.GetDirectoryName(RootPe.Filepath);
+    List<string> CustomSearchFolders = new List<string>();
+    SxsEntries SxsCache = SxsManifest.GetSxsEntries(RootPe);
+
+    return ResolveModule(RootPe, ModuleName, SxsCache, CustomSearchFolders, WorkingDirectory);
+}
+
+public static Tuple<ModuleSearchStrategy, PE> ResolveModule(PE RootPe, string ModuleName) {
+    string WorkingDirectory = Path.GetDirectoryName(RootPe.Filepath);
+    List<string> CustomSearchFolders = new List<string>();
+    SxsEntries SxsCache = SxsManifest.GetSxsEntries(RootPe);
+
+    return ResolveModule(RootPe, ModuleName, SxsCache, CustomSearchFolders, WorkingDirectory);
+}
+*/
+
+pair<ModuleSearchStrategy, PEManager*> BinaryCache::ResolveModule(
+    PEManager* RootPe,
+    wstring ModuleName,
+    SxsEntries SxsCache,
+    vector<wstring> CustomSearchFolders) {
+    pair<ModuleSearchStrategy, wstring> ResolvedFilepath;
+
+    // if no extension is used, assume a .dll
+    if (!filesystem::path(ModuleName).has_extension()) {
+        ModuleName += L".dll";
+    }
+
+    /*
+    string ApiSetName = LookupApiSetLibrary(ModuleName);
+    if (!string.IsNullOrEmpty(ApiSetName)) {
+        ModuleName = ApiSetName;
+    }
+    */
+
+    ResolvedFilepath = FindPE::FindPeFromDefault(RootPe, ModuleName, SxsCache, CustomSearchFolders);
+
+    /*
+    // ApiSet override the underneath search location if found or not
+    ModuleSearchStrategy ModuleLocation = ResolvedFilepath.Item1;
+    if (!string.IsNullOrEmpty(ApiSetName))
+        ModuleLocation = ModuleSearchStrategy::ApiSetSchema;
+    */
+
+    PEManager* ResolvedModule = NULL;
+    if (!ResolvedFilepath.second.empty())
+        ResolvedModule = GetBinary(ResolvedFilepath.second);
+
+
+    return pair<ModuleSearchStrategy, PEManager*>(ResolvedFilepath.first, ResolvedModule);
 }

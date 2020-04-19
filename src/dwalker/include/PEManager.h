@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include <PHLib.h>
 #include <PE.h>
 
 using namespace std;
