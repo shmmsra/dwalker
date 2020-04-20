@@ -41,7 +41,8 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Gz")
 
 target_link_libraries(${DWALKER}
     "Winhttp.lib"
-    "${PROJECT_ROOT_DIR}/build/$<CONFIG>/phlib/phlib.lib")
+    "${PROJECT_ROOT_DIR}/build/$<CONFIG>/phlib/phlib.lib"
+    "${PROJECT_ROOT_DIR}/build/xerces/install/lib/xerces-c_3D.lib")
 
 set_target_properties(${DWALKER} PROPERTIES OUTPUT_NAME ${DWALKER_OUTPUT_NAME})
 set_target_properties(${DWALKER} PROPERTIES
@@ -62,4 +63,5 @@ source_group(TREE ${PROJECT_ROOT_DIR}/src FILES ${DWALKER_HEADER_FILES} ${DWALKE
 target_include_directories(${DWALKER} PRIVATE
     "${DWALKER_PATH}/include"
     "${THIRDPARTY_PHLIB_PATH}/phnt/include"
-    "${THIRDPARTY_PHLIB_PATH}/phlib/include")
+    "${THIRDPARTY_PHLIB_PATH}/phlib/include"
+    "${PROJECT_ROOT_DIR}/build/xerces/install/include")
