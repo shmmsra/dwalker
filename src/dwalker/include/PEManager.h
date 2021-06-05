@@ -11,8 +11,8 @@ using namespace std;
 struct PeImport {
     unsigned short Hint;
     unsigned short Ordinal;
-    string Name;
-    string ModuleName;
+    wstring Name;
+    wstring ModuleName;
     bool ImportByOrdinal;
     bool DelayImport;
 
@@ -24,7 +24,7 @@ struct PeImport {
 struct PeImportDll {
 public:
     long Flags;
-    string Name;
+    wstring Name;
     long NumberOfEntries;
     vector<PeImport> ImportList;
 
@@ -78,8 +78,8 @@ public:
     // Check if the PE is 32-bit
     bool IsWow64Dll();
 
-    // Return the ApiSetSchema
-    // ApiSetSchema^ GetApiSetSchema();
+    // Return the ApiSetSchemaBase
+    unique_ptr<ApiSetSchemaBase> GetApiSetSchema();
 
     // Return the list of functions exported by the PE
     // List<PeExport ^>^ GetExports();
@@ -89,7 +89,7 @@ public:
 
     // Retrieve the manifest embedded within the PE
     // Return an empty string if there is none.
-    // String^ GetManifest();
+    wstring GetManifest();
 
     // PE properties parsed from the NT header
     PeProperties* properties;

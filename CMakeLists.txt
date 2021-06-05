@@ -4,6 +4,9 @@
 cmake_minimum_required(VERSION 3.14)
 include(ExternalProject)
 
+set(DWALKER "DWalker")
+project(${DWALKER})
+
 ExternalProject_Add(
     xerces
     # URL "https://downloads.apache.org/xerces/c/3/sources/xerces-c-3.2.3.zip"

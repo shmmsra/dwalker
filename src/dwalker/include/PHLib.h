@@ -2,9 +2,11 @@
 
 #include <string>
 #include <set>
+#include <memory>
 
 #include <ph.h>
 #include <phnet.h>
+#include <PEManager.h>
 
 using namespace std;
 
@@ -25,6 +27,16 @@ private:
 
 public:
     static PHLib* GetInstance();
+
+    // Imitialize Process Hacker's phlib internal data
+    // Must be called before any other API (kinda like OleInitialize).
     bool InitializePhLib();
+
+    // Return the list of knwown dll for this system
     set<wstring> GetKnownDlls(_In_ bool Wow64Dlls);
+
+    // Return the Api Set schema:
+    // NB: Api set resolution rely on hash buckets who 
+    // can contains more entries than this schema.
+    unique_ptr<ApiSetSchemaBase> GetApiSetSchema();
 };

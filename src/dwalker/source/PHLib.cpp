@@ -1,6 +1,42 @@
 #include <PHLib.h>
+#include <phnative.h>
+#include <ntpsapi.h>
+#include <ApiSet.h>
 
-PHLib* PHLib::_instance = NULL;
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
+
+    PAPI_SET_NAMESPACE_UNION GetApiSetNamespace()
+    {
+        ULONG	ReturnLength;
+        PROCESS_BASIC_INFORMATION ProcessInformation;
+        PAPI_SET_NAMESPACE_UNION apiSetMap = NULL;
+
+        //	Retrieve PEB address
+        if (!NT_SUCCESS(NtQueryInformationProcess(
+            GetCurrentProcess(),
+            ProcessBasicInformation,
+            &ProcessInformation,
+            sizeof(PROCESS_BASIC_INFORMATION),
+            &ReturnLength
+        )))
+        {
+            return NULL;
+        }
+
+        //	Parsing PEB structure and locating api set map
+        PPEB peb = static_cast<PPEB>(ProcessInformation.PebBaseAddress);
+        apiSetMap = static_cast<PAPI_SET_NAMESPACE_UNION>((PVOID)(peb->ApiSetMap));
+
+        return apiSetMap;
+    }
+
+//#ifdef __cplusplus
+//}
+//#endif
+
+PHLib* PHLib::_instance = nullptr;
 
 PHLib::PHLib() : bInitializedPhLib(false) {
 }
@@ -96,4 +132,15 @@ set<wstring> PHLib::GetKnownDlls(_In_ bool Wow64Dlls) {
     }
 
     return KnownDll64List;
+}
+
+unique_ptr<ApiSetSchemaBase> PHLib::GetApiSetSchema() {
+    // Api set schema resolution adapted from https://github.com/zodiacon/WindowsInternals/blob/master/APISetMap/APISetMap.cpp
+    // References :
+    // 		* Windows Internals v7
+    // 		* @aionescu's slides on "Hooking Nirvana" (RECON 2015)
+    //		* Quarkslab blog posts : 
+    // 				https://blog.quarkslab.com/runtime-dll-name-resolution-apisetschema-part-i.html
+    // 				https://blog.quarkslab.com/runtime-dll-name-resolution-apisetschema-part-ii.html
+    return ApiSetSchemaImpl::ParseApiSetSchema(GetApiSetNamespace());
 }

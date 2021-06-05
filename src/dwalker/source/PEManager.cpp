@@ -1,4 +1,7 @@
 #include <PEManager.h>
+#include <ApiSet.h>
+#include <phnative.h>
+#include <ntpsapi.h>
 
 PeImport::PeImport(
     _In_ const PPH_MAPPED_IMAGE_IMPORT_DLL importDll,
@@ -74,8 +77,6 @@ PeImportDll::PeImportDll(
 bool PeImportDll::IsDelayLoad() {
     return this->Flags & PH_MAPPED_IMAGE_DELAY_IMPORTS;
 }
-
-
 
 
 PEManager::PEManager(const wstring& filepath) : loadSuccessful(false), m_ExportsInit(false), m_ImportsInit(false) {
@@ -154,6 +155,18 @@ bool PEManager::IsWow64Dll() {
     return ((properties->Machine & 0xffff) == IMAGE_FILE_MACHINE_I386);
 }
 
+unique_ptr<ApiSetSchemaBase> PEManager::GetApiSetSchema()
+{
+    PH_MAPPED_IMAGE mappedImage = m_Impl->m_PvMappedImage;
+    for (auto n = 0u; n < mappedImage.NumberOfSections; ++n)
+    {
+        IMAGE_SECTION_HEADER const& section = mappedImage.Sections[n];
+        if (strncmp(".apiset", reinterpret_cast<char const*>(section.Name), IMAGE_SIZEOF_SHORT_NAME) == 0)
+            return ApiSetSchemaImpl::ParseApiSetSchema(reinterpret_cast<PAPI_SET_NAMESPACE_UNION>(PTR_ADD_OFFSET(mappedImage.ViewBase, section.PointerToRawData)));
+    }
+    return unique_ptr<ApiSetSchemaBase>(new EmptyApiSetSchema());
+}
+
 vector<PeImportDll> PEManager::GetImports() {
     if (m_ImportsInit)
         return m_Imports;
@@ -178,4 +191,24 @@ vector<PeImportDll> PEManager::GetImports() {
     }
 
     return m_Imports;
+}
+
+wstring PEManager::GetManifest() {
+    if (!loadSuccessful)
+        return L"";
+
+    // Extract embedded manifest
+    INT  rawManifestLen;
+    BYTE* rawManifest;
+    if (!m_Impl->GetPeManifest(&rawManifest, &rawManifestLen))
+        return L"";
+
+    // TODO(unknown): Need to validate if this manual conversion works fine
+    // Converting to wchar* and passing it to a C++ wstring object
+    wstring manifest;
+    for (int i = 0; i < rawManifestLen; i++) {
+        manifest += rawManifest[i];
+    }
+
+    return manifest;
 }

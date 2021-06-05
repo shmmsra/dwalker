@@ -8,6 +8,7 @@
 #include <PHLib.h>
 #include <PE.h>
 #include <PEManager.h>
+#include <SXSManifest.h>
 
 enum ModuleSearchStrategy {
     ROOT = -1,
@@ -27,9 +28,6 @@ enum ModuleSearchStrategy {
     UserDefined = 0xfe,
     NOT_FOUND = 0xff
 };
-
-// TODO(unknown): To be implemented
-class SxsEntries {};
 
 /// <summary>
 /// Dll path resolver emulator for the NT Loader.
