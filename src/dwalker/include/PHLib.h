@@ -8,14 +8,12 @@
 #include <phnet.h>
 #include <PEManager.h>
 
-using namespace std;
-
 class PHLib {
 private:
     static PHLib* _instance;
     bool bInitializedPhLib;
-    set<wstring> KnownDll64List;
-    set<wstring> KnownDll32List;
+    std::set<std::wstring> KnownDll64List;
+    std::set<std::wstring> KnownDll32List;
 
     PHLib();
     bool BuildKnownDllList(_In_ bool Wow64Dlls);
@@ -33,10 +31,10 @@ public:
     bool InitializePhLib();
 
     // Return the list of knwown dll for this system
-    set<wstring> GetKnownDlls(_In_ bool Wow64Dlls);
+    std::set<std::wstring> GetKnownDlls(_In_ bool Wow64Dlls);
 
     // Return the Api Set schema:
     // NB: Api set resolution rely on hash buckets who 
     // can contains more entries than this schema.
-    unique_ptr<ApiSetSchemaBase> GetApiSetSchema();
+    std::unique_ptr<ApiSetSchemaBase> GetApiSetSchema();
 };

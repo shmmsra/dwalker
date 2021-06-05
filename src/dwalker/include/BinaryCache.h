@@ -5,28 +5,25 @@
 #include <vector>
 
 #include <PEManager.h>
-#include <FindPE.h>
-
-using namespace std;
 
 class BinaryCache {
 private:
-    map<string, PEManager*> BinaryDatabase;
-    static unique_ptr<ApiSetSchemaBase> ApiSetmapCache;
+    std::map<std::string, PEManager*> BinaryDatabase;
+    static std::unique_ptr<ApiSetSchemaBase> ApiSetmapCache;
 
-    string GetBinaryHash(const wstring& PePath);
-    void UpdateLRU(const string& PeHash);
-    wstring LookupApiSetLibrary(wstring ImportDllName);
+    std::string GetBinaryHash(const std::wstring& PePath);
+    void UpdateLRU(const std::string& PeHash);
+    std::wstring LookupApiSetLibrary(std::wstring ImportDllName);
 
 public:
-    PEManager* GetBinary(const wstring& PePath);
-    pair<ModuleSearchStrategy, PEManager*> BinaryCache::ResolveModule(
+    PEManager* GetBinary(const std::wstring& PePath);
+    std::pair<ModuleSearchStrategy, PEManager*> BinaryCache::ResolveModule(
         PEManager* RootPe,
-        wstring ModuleName);
-    pair<ModuleSearchStrategy, PEManager*> ResolveModule(
+        std::wstring ModuleName);
+    std::pair<ModuleSearchStrategy, PEManager*> ResolveModule(
         PEManager* RootPe,
-        wstring ModuleName,
+        std::wstring ModuleName,
         SxsEntries SxsCache,
-        vector<wstring> CustomSearchFolders,
-        wstring WorkingDirectory);
+        std::vector<std::wstring> CustomSearchFolders,
+        std::wstring WorkingDirectory);
 };

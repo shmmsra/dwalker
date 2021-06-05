@@ -1,4 +1,7 @@
 #include <DWalker.h>
+#include <FindPE.h>
+
+using namespace std;
 
 DWalker::DWalker() : binaryCache(NULL) {
     this->binaryCache = new BinaryCache();
@@ -28,7 +31,7 @@ bool DWalker::DumpDependencyChain(const wstring& filePath) {
     vector<PeImportDll> imports = peManager->GetImports();
 
     for (auto& x : imports) {
-        pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, L"DWalker.exe");
+        std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, L"DWalker.exe");
         // Recursively load all the dependencies
         if (!DumpDependencyChain(t.second->filepath)) {
             return false;

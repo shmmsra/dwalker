@@ -17,25 +17,24 @@
 
 #include <PEManager.h>
 
-using namespace std;
 using namespace xercesc;
 
 class SxsEntry {
 public:
-    wstring Name;
-    wstring Path;
-    wstring Version;
-    wstring Type;
-    wstring PublicKeyToken;
+    std::wstring Name;
+    std::wstring Path;
+    std::wstring Version;
+    std::wstring Type;
+    std::wstring PublicKeyToken;
 
-    SxsEntry(wstring _Name, wstring _Path, wstring _Version = L"", wstring _Type = L"", wstring _PublicKeyToken = L"");
+    SxsEntry(std::wstring _Name, std::wstring _Path, std::wstring _Version = L"", std::wstring _Type = L"", std::wstring _PublicKeyToken = L"");
     SxsEntry(const SxsEntry& OtherSxsEntry);
-    SxsEntry(DOMDocument* doc, const wstring basePath, DOMXPathNSResolver* resolver, wstring relPath, wstring Folder);
+    SxsEntry(DOMDocument* doc, const std::wstring basePath, DOMXPathNSResolver* resolver, std::wstring relPath, std::wstring Folder);
 };
 
-class SxsEntries : public vector<SxsEntry> {
+class SxsEntries : public std::vector<SxsEntry> {
 public:
-    static SxsEntries FromSxsAssembly(DOMDocument* doc, const wstring basePath, DOMXPathNSResolver* resolver, wstring Folder);
+    static SxsEntries FromSxsAssembly(DOMDocument* doc, const std::wstring basePath, DOMXPathNSResolver* resolver, std::wstring Folder);
 };
 
 class SxsManifest {
@@ -51,7 +50,7 @@ public:
     static SxsEntries SxsFindTargetDll(wstring AssemblyName, wstring Folder);
 */
 //    SxsEntries ExtractDependenciesFromSxsElement(DOMDocument* doc, const wstring basePath, DOMXPathNSResolver* resolver, wstring Folder, wstring ExecutableName = L"", bool Wow64Pe = false);
-    SxsEntries ExtractDependenciesFromSxsManifestFile(wstring ManifestFile, wstring Folder, wstring ExecutableName = L"", bool Wow64Pe = false);
+    SxsEntries ExtractDependenciesFromSxsManifestFile(std::wstring ManifestFile, std::wstring Folder, std::wstring ExecutableName = L"", bool Wow64Pe = false);
 
 /*
     static SxsEntries ExtractDependenciesFromSxsManifest(wstring ManifestStream, wstring Folder, wstring ExecutableName = L"", bool Wow64Pe = false);

@@ -1,10 +1,7 @@
 #pragma once
 
-#include <string>
 #include <ph.h>
 #include <mapimg.h>
-
-using namespace std;
 
 class PE {
 public:

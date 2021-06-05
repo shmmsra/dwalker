@@ -1,7 +1,11 @@
+#include <memory>
+#include <filesystem>
+
 #include <BinaryCache.h>
 #include <SXSManifest.h>
+#include <FindPE.h>
 
-#include <filesystem>
+using namespace std;
 
 unique_ptr<ApiSetSchemaBase> BinaryCache::ApiSetmapCache = PHLib::GetInstance()->GetApiSetSchema();
 
@@ -11,7 +15,7 @@ string BinaryCache::GetBinaryHash(const wstring& PePath) {
     for (unsigned short i = 0; i < PePath.length(); i++) {
         hash += PePath[i];
     }
-    return std::to_string(hash);
+    return to_string(hash);
 }
 
 void BinaryCache::UpdateLRU(const string& PeHash) {

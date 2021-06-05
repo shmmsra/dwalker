@@ -2,9 +2,9 @@
 
 #include <ph.h>
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // ApiSet v2
@@ -115,9 +115,9 @@ typedef struct _API_SET_NAMESPACE_UNION {
 } API_SET_NAMESPACE_UNION, *PAPI_SET_NAMESPACE_UNION;
 
 
-//#ifdef __cplusplus
-//}
-//#endif
+#ifdef __cplusplus
+}
+#endif
 
 
 #include <memory>
@@ -125,30 +125,30 @@ typedef struct _API_SET_NAMESPACE_UNION {
 #include <vector>
 
 #pragma region TYPES
-typedef vector<wstring> ApiSetTarget;
+typedef std::vector<std::wstring> ApiSetTarget;
 
 class ApiSetSchemaBase
 {
 public:
-    virtual vector<pair<wstring, ApiSetTarget>> GetAll() = 0;
-    virtual ApiSetTarget Lookup(wstring) = 0;
+    virtual std::vector<std::pair<std::wstring, ApiSetTarget> > GetAll() = 0;
+    virtual ApiSetTarget Lookup(std::wstring) = 0;
 };
 #pragma endregion TYPES
 
 class EmptyApiSetSchema sealed : public ApiSetSchemaBase
 {
 public:
-    virtual vector<pair<wstring, ApiSetTarget>> GetAll() { return vector<pair<wstring, ApiSetTarget>>(); }
-    virtual ApiSetTarget Lookup(wstring) { return ApiSetTarget(); }
+    virtual std::vector<std::pair<std::wstring, ApiSetTarget>> GetAll() { return std::vector<std::pair<std::wstring, ApiSetTarget>>(); }
+    virtual ApiSetTarget Lookup(std::wstring) { return ApiSetTarget(); }
 };
 
 struct ApiSetSchemaImpl
 {
-    static unique_ptr<ApiSetSchemaBase> ParseApiSetSchema(API_SET_NAMESPACE_UNION const* apiSetMap);
+    static std::unique_ptr<ApiSetSchemaBase> ParseApiSetSchema(API_SET_NAMESPACE_UNION const* apiSetMap);
 
 private:
     // private implementation of ApiSet schema parsing
-    static unique_ptr<ApiSetSchemaBase> GetApiSetSchemaV2(API_SET_NAMESPACE_V2 const* map);
-    static unique_ptr<ApiSetSchemaBase> GetApiSetSchemaV4(API_SET_NAMESPACE_V4 const* map);
-    static unique_ptr<ApiSetSchemaBase> GetApiSetSchemaV6(API_SET_NAMESPACE_V6 const* map);
+    static std::unique_ptr<ApiSetSchemaBase> GetApiSetSchemaV2(API_SET_NAMESPACE_V2 const* map);
+    static std::unique_ptr<ApiSetSchemaBase> GetApiSetSchemaV4(API_SET_NAMESPACE_V4 const* map);
+    static std::unique_ptr<ApiSetSchemaBase> GetApiSetSchemaV6(API_SET_NAMESPACE_V6 const* map);
 };

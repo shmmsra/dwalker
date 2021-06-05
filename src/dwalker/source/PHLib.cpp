@@ -3,9 +3,11 @@
 #include <ntpsapi.h>
 #include <ApiSet.h>
 
-//#ifdef __cplusplus
-//extern "C" {
-//#endif
+using namespace std;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
     PAPI_SET_NAMESPACE_UNION GetApiSetNamespace()
     {
@@ -32,9 +34,9 @@
         return apiSetMap;
     }
 
-//#ifdef __cplusplus
-//}
-//#endif
+#ifdef __cplusplus
+}
+#endif
 
 PHLib* PHLib::_instance = nullptr;
 

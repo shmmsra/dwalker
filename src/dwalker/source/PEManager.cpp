@@ -1,7 +1,11 @@
+#include <vector>
+
 #include <PEManager.h>
 #include <ApiSet.h>
 #include <phnative.h>
 #include <ntpsapi.h>
+
+using namespace std;
 
 PeImport::PeImport(
     _In_ const PPH_MAPPED_IMAGE_IMPORT_DLL importDll,
@@ -15,8 +19,8 @@ PeImport::PeImport(
         this->DelayImport = (importDll->Flags) & PH_MAPPED_IMAGE_DELAY_IMPORTS;
 
         // TODO(unknown): Should check if wstring is required for Name and ModuleName
-        this->Name = (importEntry.Name == nullptr) ? "" : string(importEntry.Name);
-        this->ModuleName = (importDll->Name == nullptr) ? "" : string(importDll->Name);
+        this->Name = (importEntry.Name == nullptr) ? "" : std::string(importEntry.Name);
+        this->ModuleName = (importDll->Name == nullptr) ? "" : std::string(importDll->Name);
 
         this->ImportByOrdinal = (importEntry.Name == nullptr);
     }
@@ -42,7 +46,7 @@ PeImportDll::PeImportDll(
 ) : ImportDll(new PH_MAPPED_IMAGE_IMPORT_DLL) {
     if (!NT_SUCCESS(PhGetMappedImageImportDll(PvMappedImports, (ULONG)ImportDllIndex, ImportDll))) {
         Flags = 0;
-        Name = string("## PeImportDll error: Invalid DllName ##");  // TODO(unknown): Should check if wstring is required
+        Name = std::string("## PeImportDll error: Invalid DllName ##");  // TODO(unknown): Should check if wstring is required
         NumberOfEntries = 0;
         return;
     }
@@ -167,7 +171,7 @@ unique_ptr<ApiSetSchemaBase> PEManager::GetApiSetSchema()
     return unique_ptr<ApiSetSchemaBase>(new EmptyApiSetSchema());
 }
 
-vector<PeImportDll> PEManager::GetImports() {
+std::vector<PeImportDll> PEManager::GetImports() {
     if (m_ImportsInit)
         return m_Imports;
 
@@ -205,7 +209,7 @@ wstring PEManager::GetManifest() {
 
     // TODO(unknown): Need to validate if this manual conversion works fine
     // Converting to wchar* and passing it to a C++ wstring object
-    wstring manifest;
+    std::wstring manifest;
     for (int i = 0; i < rawManifestLen; i++) {
         manifest += rawManifest[i];
     }

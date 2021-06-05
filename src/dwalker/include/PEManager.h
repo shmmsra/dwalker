@@ -2,17 +2,16 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include <PHLib.h>
 #include <PE.h>
 
-using namespace std;
-
 struct PeImport {
     unsigned short Hint;
     unsigned short Ordinal;
-    wstring Name;
-    wstring ModuleName;
+    std::string Name;
+    std::string ModuleName;
     bool ImportByOrdinal;
     bool DelayImport;
 
@@ -24,9 +23,9 @@ struct PeImport {
 struct PeImportDll {
 public:
     long Flags;
-    wstring Name;
+    std::string Name;
     long NumberOfEntries;
-    vector<PeImport> ImportList;
+    std::vector<PeImport> ImportList;
 
     // constructors
     PeImportDll(const PPH_MAPPED_IMAGE_IMPORTS& PvMappedImports, size_t ImportDllIndex);
@@ -56,7 +55,7 @@ struct PeProperties {
     bool CorrectChecksum;
 
     short Subsystem;
-    pair<short, short>* SubsystemVersion;
+    std::pair<short, short>* SubsystemVersion;
 
     short Characteristics;
     short DllCharacteristics;
@@ -66,7 +65,7 @@ struct PeProperties {
 
 class PEManager {
 public:
-    PEManager(const wstring& filepath);
+    PEManager(const std::wstring& filepath);
     ~PEManager();
 
     // Mapped the PE in memory and init infos
@@ -79,17 +78,17 @@ public:
     bool IsWow64Dll();
 
     // Return the ApiSetSchemaBase
-    unique_ptr<ApiSetSchemaBase> GetApiSetSchema();
+    std::unique_ptr<ApiSetSchemaBase> GetApiSetSchema();
 
     // Return the list of functions exported by the PE
     // List<PeExport ^>^ GetExports();
 
     // Return the list of functions imported by the PE, bundled by Dll name
-    vector<PeImportDll> GetImports();
+    std::vector<PeImportDll> GetImports();
 
     // Retrieve the manifest embedded within the PE
     // Return an empty string if there is none.
-    wstring GetManifest();
+    std::wstring GetManifest();
 
     // PE properties parsed from the NT header
     PeProperties* properties;
@@ -98,7 +97,7 @@ public:
     bool loadSuccessful;
 
     // Path to PE file.
-    wstring filepath;
+    std::wstring filepath;
 
 protected:
     // Initalize PeProperties struct once the PE has been loaded into memory
@@ -109,7 +108,7 @@ private:
     PE* m_Impl;
 
     // local cache for imports and exports list
-    vector<PeImportDll> m_Imports;
+    std::vector<PeImportDll> m_Imports;
     // List<PeExport ^>^  m_Exports;
     bool m_ExportsInit;
     bool m_ImportsInit;

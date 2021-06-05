@@ -5,6 +5,8 @@
 #include <ShlObj.h>
 #include <Knownfolders.h>
 
+using namespace std;
+
 bool FindPE::IsFilepathInvalid(wstring Filepath) {
     // TODO(unknown): To be implemented
     return false;
@@ -57,7 +59,8 @@ pair<ModuleSearchStrategy, wstring> FindPE::FindPeFromDefault(
     PEManager* RootPe,
     wstring ModuleName,
     SxsEntries SxsCache,
-    vector<wstring> CustomSearchFolders) {
+    vector<wstring> CustomSearchFolders
+) {
     wstring RootPeFolder(filesystem::path(RootPe->filepath).parent_path());
     if (!filesystem::exists(RootPeFolder)) {
         return pair<ModuleSearchStrategy, wstring>(
