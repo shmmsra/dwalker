@@ -11,5 +11,5 @@ public:
     DWalker();
     ~DWalker();
 
-    bool DumpDependencyChain(const wstring& filePath);
+    bool DumpDependencyChain(const std::wstring& filePath);
 };

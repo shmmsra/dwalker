@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <PEManager.h>
+#include <FindPE.h>
 
 class BinaryCache {
 private:

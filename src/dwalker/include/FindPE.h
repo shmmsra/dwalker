@@ -35,7 +35,7 @@ enum ModuleSearchStrategy {
 class FindPE {
 public:
     static bool IsFilepathInvalid(std::wstring Filepath);
-    static wstring FindPEFromPath(std::wstring ModuleName, std::vector<std::wstring> CandidateFolders, bool Wow64Dll = false);
+    static std::wstring FindPEFromPath(std::wstring ModuleName, std::vector<std::wstring> CandidateFolders, bool Wow64Dll = false);
 
     /*
     static Tuple<ModuleSearchStrategy, string> FindPeFromDefault(PE RootPe, string ModuleName) {
@@ -66,7 +66,7 @@ public:
      *  5. %pwd%
      *  6. AppDatas
      */
-    static pair<ModuleSearchStrategy, std::wstring> FindPeFromDefault(
+    static std::pair<ModuleSearchStrategy, std::wstring> FindPeFromDefault(
         PEManager* RootPe,
         std::wstring ModuleName,
         SxsEntries SxsCache,
