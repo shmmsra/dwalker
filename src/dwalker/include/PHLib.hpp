@@ -5,8 +5,8 @@
 #include <memory>
 
 #include <ph.h>
-#include <phnet.h>
-#include <PEManager.h>
+#include <PEManager.hpp>
+#include <ApiSet.hpp>
 
 class PHLib {
 private:

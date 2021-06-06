@@ -5,10 +5,10 @@
 #include <string>
 #include <vector>
 
-#include <PHLib.h>
-#include <PE.h>
-#include <PEManager.h>
-#include <SXSManifest.h>
+#include <PHLib.hpp>
+#include <PE.hpp>
+#include <PEManager.hpp>
+#include <SXSManifest.hpp>
 
 enum ModuleSearchStrategy {
     ROOT = -1,

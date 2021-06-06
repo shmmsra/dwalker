@@ -4,8 +4,8 @@
 #include <vector>
 #include <filesystem>
 
-#include <PEManager.h>
-#include <SXSManifest.h>
+#include <PEManager.hpp>
+#include <SXSManifest.hpp>
 
 using namespace std;
 using namespace xercesc;

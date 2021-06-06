@@ -1,7 +1,7 @@
 #include <vector>
 
-#include <PEManager.h>
-#include <ApiSet.h>
+#include <PEManager.hpp>
+#include <ApiSet.hpp>
 #include <phnative.h>
 #include <ntpsapi.h>
 

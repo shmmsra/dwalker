@@ -4,8 +4,9 @@
 #include <vector>
 #include <memory>
 
-#include <PHLib.h>
-#include <PE.h>
+#include <PHLib.hpp>
+#include <PE.hpp>
+#include <ApiSet.hpp>
 
 struct PeImport {
     unsigned short Hint;

@@ -14,10 +14,9 @@
 #include <xercesc/sax/HandlerBase.hpp>
 #include <xercesc/util/XMLString.hpp>
 #include <xercesc/util/PlatformUtils.hpp>
+#include <xercesc/dom/DOMDocument.hpp>
 
-#include <PEManager.h>
-
-using namespace xercesc;
+#include <PEManager.hpp>
 
 class SxsEntry {
 public:
@@ -29,12 +28,12 @@ public:
 
     SxsEntry(std::wstring _Name, std::wstring _Path, std::wstring _Version = L"", std::wstring _Type = L"", std::wstring _PublicKeyToken = L"");
     SxsEntry(const SxsEntry& OtherSxsEntry);
-    SxsEntry(DOMDocument* doc, const std::wstring basePath, DOMXPathNSResolver* resolver, std::wstring relPath, std::wstring Folder);
+    SxsEntry(xercesc::DOMDocument* doc, const std::wstring basePath, xercesc::DOMXPathNSResolver* resolver, std::wstring relPath, std::wstring Folder);
 };
 
 class SxsEntries : public std::vector<SxsEntry> {
 public:
-    static SxsEntries FromSxsAssembly(DOMDocument* doc, const std::wstring basePath, DOMXPathNSResolver* resolver, std::wstring Folder);
+    static SxsEntries FromSxsAssembly(xercesc::DOMDocument* doc, const std::wstring basePath, xercesc::DOMXPathNSResolver* resolver, std::wstring Folder);
 };
 
 class SxsManifest {

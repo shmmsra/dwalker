@@ -124,16 +124,15 @@ typedef struct _API_SET_NAMESPACE_UNION {
 #include <string>
 #include <vector>
 
-#pragma region TYPES
 typedef std::vector<std::wstring> ApiSetTarget;
 
 class ApiSetSchemaBase
 {
 public:
+    virtual ~ApiSetSchemaBase() {};
     virtual std::vector<std::pair<std::wstring, ApiSetTarget> > GetAll() = 0;
     virtual ApiSetTarget Lookup(std::wstring) = 0;
 };
-#pragma endregion TYPES
 
 class EmptyApiSetSchema sealed : public ApiSetSchemaBase
 {

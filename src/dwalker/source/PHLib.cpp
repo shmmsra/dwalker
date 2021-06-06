@@ -1,7 +1,8 @@
-#include <PHLib.h>
+// The order of header files is of importance here
+#include <PHLib.hpp>
 #include <phnative.h>
 #include <ntpsapi.h>
-#include <ApiSet.h>
+#include <ApiSet.hpp>
 
 using namespace std;
 
@@ -28,8 +29,8 @@ extern "C" {
         }
 
         //	Parsing PEB structure and locating api set map
-        PPEB peb = static_cast<PPEB>(ProcessInformation.PebBaseAddress);
-        apiSetMap = static_cast<PAPI_SET_NAMESPACE_UNION>((PVOID)(peb->ApiSetMap));
+        PPEB peb = (PPEB)(ProcessInformation.PebBaseAddress);
+        apiSetMap = (PAPI_SET_NAMESPACE_UNION)((PVOID)(peb->ApiSetMap));
 
         return apiSetMap;
     }

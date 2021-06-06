@@ -1,5 +1,6 @@
-#include <DWalker.h>
-#include <FindPE.h>
+#include <DWalker.hpp>
+#include <PEManager.hpp>
+#include <BinaryCache.hpp>
 
 using namespace std;
 

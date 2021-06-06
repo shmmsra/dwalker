@@ -1,4 +1,4 @@
-#include <PE.h>
+#include <PE.hpp>
 #include <phnt_ntdef.h>
 
 PE::PE() : m_bImageLoaded(false) {

@@ -18,7 +18,6 @@
 #include <graph.h>
 #include <circbuf.h>
 #include <dltmgr.h>
-#include <phnet.h>
 
 #endif DWAPP_H
 
@@ -28,13 +27,12 @@
 #include <fstream>
 #include <streambuf>
 
-#include <DWalker.h>
-#include <PHLib.h>
+#include <DWalker.hpp>
+#include <PHLib.hpp>
 
 using namespace std;
 
 #define BINARY_PATH L".\\dwalker.exe"
-
 
 
 #include <xercesc/util/XercesVersion.hpp>
@@ -44,6 +42,8 @@ using namespace std;
 #include <xercesc/util/XMLString.hpp>
 #include <xercesc/util/PlatformUtils.hpp>
 #include <xercesc/framework/MemBufInputSource.hpp>
+
+using namespace xercesc;
 
 int xercesDOMParser() {
     try {

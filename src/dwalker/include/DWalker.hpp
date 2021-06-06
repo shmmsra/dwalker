@@ -1,7 +1,7 @@
 #pragma once
 
-#include <PEManager.h>
-#include <BinaryCache.h>
+#include <PEManager.hpp>
+#include <BinaryCache.hpp>
 
 class DWalker {
 private:

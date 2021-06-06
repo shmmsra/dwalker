@@ -4,8 +4,9 @@
 #include <map>
 #include <vector>
 
-#include <PEManager.h>
-#include <FindPE.h>
+#include <PEManager.hpp>
+#include <FindPE.hpp>
+#include <ApiSet.hpp>
 
 class BinaryCache {
 private:

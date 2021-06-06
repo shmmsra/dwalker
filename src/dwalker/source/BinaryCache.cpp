@@ -1,9 +1,8 @@
 #include <memory>
 #include <filesystem>
 
-#include <BinaryCache.h>
-#include <SXSManifest.h>
-#include <FindPE.h>
+#include <BinaryCache.hpp>
+#include <SXSManifest.hpp>
 
 using namespace std;
 

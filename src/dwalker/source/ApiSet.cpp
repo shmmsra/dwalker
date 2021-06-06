@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <utility>
 
-#include <ApiSet.h>
+#include <ApiSet.hpp>
 
 using namespace std;
 
@@ -18,7 +18,7 @@ public:
 
         // TODO : check if ext- is not present on win7 and 8.1
         if (lower_name.rfind(L"api-", 0) != 0)
-            return nullptr;
+            return ApiSetTarget();
 
         // Force lowercase name
         name = move(lower_name);
@@ -44,7 +44,7 @@ public:
             else
                 min = cur + 1;
         }
-        return nullptr;
+        return ApiSetTarget();
     }
 };
 
@@ -90,13 +90,13 @@ unique_ptr<ApiSetSchemaBase> ApiSetSchemaImpl::GetApiSetSchemaV2(API_SET_NAMESPA
 
         // Retrieve api min-win contract name
         auto const name_buffer = reinterpret_cast<PWCHAR>(base + it->NameOffset);
-        auto const name = wstring(name_buffer, 0, it->NameLength / sizeof(WCHAR));
+        auto name = wstring(name_buffer, 0, it->NameLength / sizeof(WCHAR));
 
         // force storing lowercase variant for comparison
         transform(name.begin(), name.end(), name.begin(), ::tolower);
         wstring lower_name = move(name);
 
-        schema->All.push_back((lower_name, targets));
+        schema->All.push_back(make_pair(lower_name, targets));
     }
     return schema;
 }
@@ -119,13 +119,13 @@ unique_ptr<ApiSetSchemaBase> ApiSetSchemaImpl::GetApiSetSchemaV4(API_SET_NAMESPA
 
         // Retrieve api min-win contract name
         auto const name_buffer = reinterpret_cast<PWCHAR>(base + it->NameOffset);
-        auto const name = wstring(name_buffer, 0, it->NameLength / sizeof(WCHAR));
+        auto name = wstring(name_buffer, 0, it->NameLength / sizeof(WCHAR));
 
         // force storing lowercase variant for comparison
         transform(name.begin(), name.end(), name.begin(), ::tolower);
         auto const lower_name = move(name);
 
-        schema->All.push_back((lower_name, targets));
+        schema->All.push_back(make_pair(lower_name, targets));
     }
     return schema;
 }
@@ -151,7 +151,7 @@ public:
             auto pair = HashedAll[cur];
 
             if (name.rfind(pair.first, 0) == 0)
-                return pair.first;
+                return pair.second;
 
             // TODO: The expected behaviour is to compare ordinal,
             // need to verify that it is working as expected
@@ -160,7 +160,7 @@ public:
             else
                 min = cur + 1;
         }
-        return nullptr;
+        return ApiSetTarget();
     }
 };
 
@@ -182,8 +182,8 @@ unique_ptr<ApiSetSchemaBase> ApiSetSchemaImpl::GetApiSetSchemaV6(API_SET_NAMESPA
 
         // Retrieve api min-win contract name
         auto const name_buffer = reinterpret_cast<PWCHAR>(base + it->NameOffset);
-        auto const name = wstring(name_buffer, 0, it->NameLength / sizeof(WCHAR));
-        auto const hash_name = wstring(name_buffer, 0, it->HashedLength / sizeof(WCHAR));
+        auto name = wstring(name_buffer, 0, it->NameLength / sizeof(WCHAR));
+        auto hash_name = wstring(name_buffer, 0, it->HashedLength / sizeof(WCHAR));
 
         // force storing lowercase variant for comparison
         transform(name.begin(), name.end(), name.begin(), ::tolower);
@@ -191,8 +191,8 @@ unique_ptr<ApiSetSchemaBase> ApiSetSchemaImpl::GetApiSetSchemaV6(API_SET_NAMESPA
         transform(hash_name.begin(), hash_name.end(), hash_name.begin(), ::tolower);
         auto const lower_hash_name = move(name);
 
-        schema->All.push_back((lower_name, targets));
-        schema->HashedAll.push_back((lower_hash_name, targets));
+        schema->All.push_back(make_pair(lower_name, targets));
+        schema->HashedAll.push_back(make_pair(lower_hash_name, targets));
     }
     return schema;
 }
