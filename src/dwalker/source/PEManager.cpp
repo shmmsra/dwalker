@@ -197,19 +197,19 @@ std::vector<PeImportDll> PEManager::GetImports() {
     return m_Imports;
 }
 
-wstring PEManager::GetManifest() {
+string PEManager::GetManifest() {
     if (!loadSuccessful)
-        return L"";
+        return "";
 
     // Extract embedded manifest
     INT  rawManifestLen;
     BYTE* rawManifest;
     if (!m_Impl->GetPeManifest(&rawManifest, &rawManifestLen))
-        return L"";
+        return "";
 
     // TODO(unknown): Need to validate if this manual conversion works fine
     // Converting to wchar* and passing it to a C++ wstring object
-    std::wstring manifest;
+    std::string manifest;
     for (int i = 0; i < rawManifestLen; i++) {
         manifest += rawManifest[i];
     }

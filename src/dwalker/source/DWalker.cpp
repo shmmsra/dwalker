@@ -32,13 +32,11 @@ bool DWalker::DumpDependencyChain(const wstring& filePath) {
     vector<PeImportDll> imports = peManager->GetImports();
 
     for (auto& x : imports) {
-        std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, L"DWalker.exe");
+        std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, wstring(x.Name.begin(), x.Name.end()));
         // Recursively load all the dependencies
-        if (!DumpDependencyChain(t.second->filepath)) {
+        if (t.first == ModuleSearchStrategy::NOT_FOUND || !t.second || !DumpDependencyChain(t.second->filepath)) {
             return false;
         }
-        // TODO(unknown): To be removed later
-        break;
     }
 
     return true;

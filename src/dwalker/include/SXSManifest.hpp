@@ -44,15 +44,13 @@ private:
 public:
     static SxsManifest* GetInstance();
 
-/*
     // find dll with same name as sxs assembly in target directory
-    static SxsEntries SxsFindTargetDll(wstring AssemblyName, wstring Folder);
-*/
-//    SxsEntries ExtractDependenciesFromSxsElement(DOMDocument* doc, const wstring basePath, DOMXPathNSResolver* resolver, wstring Folder, wstring ExecutableName = L"", bool Wow64Pe = false);
-    SxsEntries ExtractDependenciesFromSxsManifestFile(std::wstring ManifestFile, std::wstring Folder, std::wstring ExecutableName = L"", bool Wow64Pe = false);
+    SxsEntries SxsFindTargetDll(std::wstring AssemblyName, std::wstring Folder);
 
+    SxsEntries ExtractDependenciesFromSxsElement(xercesc::DOMDocument* doc, const std::wstring& basePath, xercesc::DOMXPathNSResolver* resolver, std::wstring Folder, std::wstring ExecutableName = L"", bool Wow64Pe = false);
+    SxsEntries ExtractDependenciesFromSxsManifestFile(std::wstring ManifestFile, std::wstring Folder, std::wstring ExecutableName = L"", bool Wow64Pe = false);
+    SxsEntries ExtractDependenciesFromSxsManifest(std::string Manifest, std::wstring Folder, std::wstring ExecutableName = L"", bool Wow64Pe = false);
 /*
-    static SxsEntries ExtractDependenciesFromSxsManifest(wstring ManifestStream, wstring Folder, wstring ExecutableName = L"", bool Wow64Pe = false);
     static xml_document ParseSxsManifest(System.IO.Stream ManifestStream);
 */
 

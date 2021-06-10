@@ -3,12 +3,38 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <algorithm>
+#include <iostream>
+#include <regex>
+#include <string>
+#include <fstream>
+#include <streambuf>
+#include <xercesc/framework/MemBufInputSource.hpp>
 
 #include <PEManager.hpp>
 #include <SXSManifest.hpp>
 
 using namespace std;
 using namespace xercesc;
+
+std::wstring GetXMLNodeAttribute(const DOMXPathResult* node, const string& attributeName) {
+    if (node == nullptr)
+        return L"";
+
+    DOMNode* nodeValue = node->getNodeValue();
+    if (nodeValue == nullptr)
+        return L"";
+
+    DOMNamedNodeMap* nodeAttributes = nodeValue->getAttributes();
+    if (nodeAttributes == nullptr)
+        return L"";
+
+    DOMNode* attribute = nodeAttributes->getNamedItem(XMLString::transcode(attributeName.c_str()));
+    if (attribute == nullptr)
+        return L"";
+
+    return attribute->getNodeValue();
+}
 
 SxsEntry::SxsEntry(wstring _Name, wstring _Path, wstring _Version/* = L""*/, wstring _Type/* = L""*/, wstring _PublicKeyToken/* = L""*/) {
     Name = _Name;
@@ -28,7 +54,8 @@ SxsEntry::SxsEntry(const SxsEntry& OtherSxsEntry) {
 
 SxsEntry::SxsEntry(DOMDocument* doc, const wstring basePath, DOMXPathNSResolver* resolver, wstring relPath, wstring Folder) {
     Name = filesystem::path(relPath).filename();
-    //Path = filesystem::path(Folder).append(filesystem::path(relPath));
+    Path = filesystem::path(Folder);
+    Path += filesystem::path(relPath);
 
     DOMXPathResult* sxsAssemblyIdentityNode = doc->evaluate(
         basePath.c_str(),
@@ -40,9 +67,9 @@ SxsEntry::SxsEntry(DOMDocument* doc, const wstring basePath, DOMXPathNSResolver*
         XMLSize_t nLength = sxsAssemblyIdentityNode->getSnapshotLength();
         if (nLength == 1) {
             sxsAssemblyIdentityNode->snapshotItem(0);
-            Version = sxsAssemblyIdentityNode->getNodeValue()->getAttributes()->getNamedItem(XMLString::transcode("version"))->getNodeValue();
-            Type = sxsAssemblyIdentityNode->getNodeValue()->getAttributes()->getNamedItem(XMLString::transcode("type"))->getNodeValue();
-            PublicKeyToken = sxsAssemblyIdentityNode->getNodeValue()->getAttributes()->getNamedItem(XMLString::transcode("publicKeyToken"))->getNodeValue();
+            Version = GetXMLNodeAttribute(sxsAssemblyIdentityNode, "version");
+            Type = GetXMLNodeAttribute(sxsAssemblyIdentityNode, "type");
+            PublicKeyToken = GetXMLNodeAttribute(sxsAssemblyIdentityNode, "publicKeyToken");
 
             // TODO : DLL search order ?
             //if (!File.Exists(Path))
@@ -87,34 +114,34 @@ SxsEntries SxsEntries::FromSxsAssembly(DOMDocument* doc, const wstring basePath,
     return Entries;
 }
 
-/*
-    // find dll with same name as sxs assembly in target directory
-    static SxsEntries SxsFindTargetDll(wstring AssemblyName, wstring Folder) {
-        SxsEntries* EntriesFromElement = new SxsEntries();
+// find dll with same name as sxs assembly in target directory
+SxsEntries SxsManifest::SxsFindTargetDll(wstring AssemblyName, wstring Folder) {
+    SxsEntries EntriesFromElement;
 
-        wstring TargetFilePath = Path.Combine(Folder, AssemblyName);
-        if (File.Exists(TargetFilePath)) {
-            var Name = System.IO.Path.GetFileName(TargetFilePath);
-            var Path = TargetFilePath;
+    wstring TargetFilePath = filesystem::path(Folder);
+    TargetFilePath += filesystem::path(AssemblyName);
+    if (filesystem::exists(TargetFilePath)) {
+        wstring Name = filesystem::path(TargetFilePath).filename();
+        wstring Path = TargetFilePath;
 
-            EntriesFromElement.Add(new SxsEntry(Name, Path));
-            return EntriesFromElement;
-        }
-
-        wstring TargetDllPath = Path.Combine(Folder, String.Format("{0:s}.dll", AssemblyName));
-        if (File.Exists(TargetDllPath)) {
-            var Name = System.IO.Path.GetFileName(TargetDllPath);
-            var Path = TargetDllPath;
-
-            EntriesFromElement.Add(new SxsEntry(Name, Path));
-            return EntriesFromElement;
-        }
-
+        EntriesFromElement.push_back(SxsEntry(Name, Path));
         return EntriesFromElement;
     }
-*/
-/*
-SxsEntries SxsManifest::ExtractDependenciesFromSxsElement(DOMDocument* doc, const wstring basePath, DOMXPathNSResolver* resolver, wstring Folder, wstring ExecutableName = L"", bool Wow64Pe = false) {
+
+    wstring TargetDllPath = filesystem::path(Folder);
+    TargetDllPath += filesystem::path(AssemblyName + L".dll");
+    if (filesystem::exists(TargetDllPath)) {
+        wstring Name = filesystem::path(TargetDllPath).filename();
+        wstring Path = TargetDllPath;
+
+        EntriesFromElement.push_back(SxsEntry(Name, Path));
+        return EntriesFromElement;
+    }
+
+    return EntriesFromElement;
+}
+
+SxsEntries SxsManifest::ExtractDependenciesFromSxsElement(DOMDocument* doc, const wstring& basePath, DOMXPathNSResolver* resolver, wstring Folder, wstring ExecutableName/* = L""*/, bool Wow64Pe/* = false*/) {
     // Private assembly search sequence : https://msdn.microsoft.com/en-us/library/windows/desktop/aa374224(v=vs.85).aspx
     //
     // * In the application's folder. Typically, this is the folder containing the application's executable file.
@@ -144,133 +171,41 @@ SxsEntries SxsManifest::ExtractDependenciesFromSxsElement(DOMDocument* doc, cons
 
 
     // 0. find publisher manifest in %WINDIR%/WinSxs/Manifest
-    if (SxsAssembly->getNodeValue()->getAttributes()->getNamedItem(XMLString::transcode("publicKeyToken")) != nullptr) {
-        wstring WinSxsDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-            "WinSxs"
-        );
+    wstring PublicKeyToken = GetXMLNodeAttribute(SxsAssembly, "publicKeyToken");
+    if (!PublicKeyToken.empty()) {
+        wstring Name = GetXMLNodeAttribute(SxsAssembly, "name");
+        transform(Name.begin(), Name.end(), Name.begin(), ::tolower);
+        wstring ProcessArch = GetXMLNodeAttribute(SxsAssembly, "processorArchitecture");
+        ProcessArch = !ProcessArch.empty() ? ProcessArch : L"*";
+        wstring Version = GetXMLNodeAttribute(SxsAssembly, "version");
+        wstring Language = GetXMLNodeAttribute(SxsAssembly, "langage");
+        Language = !Language.empty() ? Language : L"none";  // TODO : support localized sxs redirection
 
-        wstring WinSxsManifestDir = filesystem::path(WinSxsDir) / L"Manifests";
-        var RegisteredManifests = Directory.EnumerateFiles(
-            WinSxsManifestDir,
-            "*.manifest"
-        );
-
-        wstring PublicKeyToken = SxsAssembly->getNodeValue()->getAttributes()->getNamedItem(XMLString::transcode("publicKeyToken"))->getNodeValue();
-        wstring Name = wstring(SxsAssembly->getNodeValue()->getAttributes()->getNamedItem(XMLString::transcode("name"))->getNodeValue()).ToLower();
-        wstring ProcessArch = SxsAssembly.Attribute("processorArchitecture") != null ? SxsAssembly.Attribute("processorArchitecture").Value : "*";
-        wstring Version = SxsAssembly.Attribute("version").Value;
-        wstring Langage = SxsAssembly.Attribute("langage") != null ? SxsAssembly.Attribute("langage").Value : "none"; // TODO : support localized sxs redirection
-
-
-        switch (ProcessArch.ToLower()) {
-        case "$(build.arch)":
-        case "*":
-            ProcessArch = (Wow64Pe) ? "x86" : "amd64";
-            break;
-        case "amd64":
-        case "x86":
-        case "wow64":
-        case "msil":
-            break; // nothing to do
-        default:
-            ProcessArch = ".*";
-            break;
+        wstring lower_processarch = ProcessArch;
+        transform(lower_processarch.begin(), lower_processarch.end(), lower_processarch.begin(), ::tolower);
+        if (lower_processarch == L"$(build.arch)" || lower_processarch == L"*") {
+            ProcessArch = (Wow64Pe) ? L"x86" : L"amd64";
+        } else if (lower_processarch == L"amd64" || lower_processarch == L"x86" || lower_processarch == L"wow64" || lower_processarch == L"msil") {
+            // nothing to do
+        } else {
+            ProcessArch = L".*";
         }
-
-        Regex VersionRegex = new Regex(@"([0 - 9] + )\.([0 - 9] + )\.([0 - 9] + )\.([0 - 9] + )", RegexOptions.IgnoreCase);
-            Match VersionMatch = VersionRegex.Match(Version);
-
-        if (VersionMatch.Success) {
-            wstring Major = VersionMatch.Groups[1].Value;
-            wstring Minor = VersionMatch.Groups[2].Value;
-            wstring Build = (VersionMatch.Groups[3].Value == "0") ? ".*" : VersionMatch.Groups[3].Value;
-            wstring Patch = (VersionMatch.Groups[4].Value == "0") ? ".*" : VersionMatch.Groups[4].Value;
-
-            // Manifest filename : {ProcArch}_{Name}_{PublicKeyToken}_{FuzzyVersion}_{Langage}_{some_hash}.manifest
-            Regex ManifestFileNameRegex = new Regex(
-                String.Format(@"({0:s}_{ 1:s }_{ 2:s }_{ 3:s }\.{4:s}\.({ 5:s })\.({ 6:s })_none_([a - fA - F0 - 9] + ))\.manifest",
-                ProcessArch,
-                Name,
-                PublicKeyToken,
-                Major,
-                Minor,
-                Build,
-                Patch
-                //Langage,
-                // some hash
-            ),
-                RegexOptions.IgnoreCase
-                );
-
-                bool FoundMatch = false;
-                int HighestBuild = 0;
-                int HighestPatch = 0;
-                wstring MatchSxsManifestDir = "";
-                wstring MatchSxsManifestPath = "";
-
-                foreach(var FileName in RegisteredManifests) {
-                    Match MatchingSxsFile = ManifestFileNameRegex.Match(FileName);
-                    if (MatchingSxsFile.Success) {
-
-                        int MatchingBuild = Int32.Parse(MatchingSxsFile.Groups[2].Value);
-                        int MatchingPatch = Int32.Parse(MatchingSxsFile.Groups[3].Value);
-
-                        if ((MatchingBuild > HighestBuild) || ((MatchingBuild == HighestBuild) && (MatchingPatch > HighestPatch))) {
-
-
-                            string TestMatchSxsManifestDir = MatchingSxsFile.Groups[1].Value;
-
-                            // Check the directory exists before confirming there is a match
-                            string FullPathMatchSxsManifestDir = Path.Combine(WinSxsDir, TestMatchSxsManifestDir);
-                            Console.WriteLine("FullPathMatchSxsManifestDir : Checking {0:s}", FullPathMatchSxsManifestDir);
-                            if (NativeFile.Exists(FullPathMatchSxsManifestDir, true)) {
-
-                                Console.WriteLine("FullPathMatchSxsManifestDir : Checking {0:s} TRUE", FullPathMatchSxsManifestDir);
-                                FoundMatch = true;
-
-                                HighestBuild = MatchingBuild;
-                                HighestPatch = MatchingPatch;
-
-                                MatchSxsManifestDir = TestMatchSxsManifestDir;
-                                MatchSxsManifestPath = Path.Combine(WinSxsManifestDir, FileName);
-                            }
-                        }
-                    }
-                }
-
-                if (FoundMatch) {
-
-                    string FullPathMatchSxsManifestDir = Path.Combine(WinSxsDir, MatchSxsManifestDir);
-
-                    // "{name}.local" local sxs directory hijack ( really used for UAC bypasses )
-                    if (ExecutableName != "") {
-                        string LocalSxsDir = Path.Combine(Folder, String.Format("{0:s}.local", ExecutableName));
-                        string MatchingLocalSxsDir = Path.Combine(LocalSxsDir, MatchSxsManifestDir);
-
-                        if (Directory.Exists(LocalSxsDir) && Directory.Exists(MatchingLocalSxsDir)) {
-                            FullPathMatchSxsManifestDir = MatchingLocalSxsDir;
-                        }
-                    }
-
-
-                    return ExtractDependenciesFromSxsManifestFile(MatchSxsManifestPath, FullPathMatchSxsManifestDir, ExecutableName, Wow64Pe);
-                }
-        }
+        // TODO: Search for the publisher manifest
     }
 
     // 1. \\<appdir>\<assemblyname>.DLL
     // find dll with same assembly name in same directory
     SxsEntries EntriesFromMatchingDll = SxsFindTargetDll(SxsManifestName, Folder);
-    if (EntriesFromMatchingDll.Count > 0) {
+    if (EntriesFromMatchingDll.size() > 0) {
         return EntriesFromMatchingDll;
     }
 
 
     // 2. \\<appdir>\<assemblyname>.manifest
     // find manifest with same assembly name in same directory
-    TargetSxsManifestPath = Path.Combine(Folder, String.Format("{0:s}.manifest", SxsManifestName));
-    if (File.Exists(TargetSxsManifestPath)) {
+    TargetSxsManifestPath = filesystem::path(Folder);
+    TargetSxsManifestPath += filesystem::path(SxsManifestName + L".manifest");
+    if (filesystem::exists(TargetSxsManifestPath)) {
         return ExtractDependenciesFromSxsManifestFile(TargetSxsManifestPath, Folder, ExecutableName, Wow64Pe);
     }
 
@@ -278,14 +213,15 @@ SxsEntries SxsManifest::ExtractDependenciesFromSxsElement(DOMDocument* doc, cons
     // 3. \\<appdir>\<assemblyname>\<assemblyname>.DLL
     // find matching dll in sub directory
     SxsEntries EntriesFromMatchingDllSub = SxsFindTargetDll(SxsManifestName, SxsManifestDir);
-    if (EntriesFromMatchingDllSub.Count > 0) {
+    if (EntriesFromMatchingDllSub.size() > 0) {
         return EntriesFromMatchingDllSub;
     }
 
     // 4. \<appdir>\<assemblyname>\<assemblyname>.manifest
     // find manifest in sub directory
-    TargetSxsManifestPath = Path.Combine(SxsManifestDir, String.Format("{0:s}.manifest", SxsManifestName));
-    if (Directory.Exists(SxsManifestDir) && File.Exists(TargetSxsManifestPath)) {
+    TargetSxsManifestPath = filesystem::path(SxsManifestDir);
+    TargetSxsManifestPath += filesystem::path(SxsManifestName + L".manifest");
+    if (filesystem::is_directory(SxsManifestDir) && filesystem::exists(TargetSxsManifestPath)) {
         return ExtractDependenciesFromSxsManifestFile(TargetSxsManifestPath, SxsManifestDir, ExecutableName, Wow64Pe);
     }
 
@@ -302,12 +238,14 @@ SxsEntries SxsManifest::ExtractDependenciesFromSxsElement(DOMDocument* doc, cons
 
     // Could not find the dependency
     {
-        SxsEntries EntriesFromElement = new SxsEntries();
-        EntriesFromElement.Add(new SxsEntry(SxsManifestName, "file ???"));
+        SxsEntries EntriesFromElement;
+        EntriesFromElement.push_back(SxsEntry(SxsManifestName, L"file ???"));
         return EntriesFromElement;
     }
+
+    return SxsEntries();
 }
-*/
+
 SxsManifest* SxsManifest::_instance = nullptr;
 
 SxsManifest::SxsManifest() {
@@ -328,36 +266,39 @@ SxsManifest* SxsManifest::GetInstance() {
     return new SxsManifest();
 }
 
-SxsEntries SxsManifest::ExtractDependenciesFromSxsManifestFile(wstring ManifestFile, wstring Folder, wstring ExecutableName/* = L""*/, bool Wow64Pe/* = false*/) {
+SxsEntries SxsManifest::ExtractDependenciesFromSxsManifest(string Manifest, wstring Folder, wstring ExecutableName/* = L""*/, bool Wow64Pe/* = false*/) {
     /* Sample manifest XML:
-        *  <?xml version='1.0' encoding='UTF-8' standalone='yes'?>
-        *  <assembly xmlns='urn:schemas-microsoft-com:asm.v1' manifestVersion='1.0'>
-        *    <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-        *      <security>
-        *        <requestedPrivileges>
-        *          <requestedExecutionLevel level='asInvoker' uiAccess='false' />
-        *        </requestedPrivileges>
-        *      </security>
-        *    </trustInfo>
-        *    <dependency>
-        *      <dependentAssembly>
-        *        <assemblyIdentity type='win32' name='Microsoft.VC90.CRT' version='9.0.21022.8 processorArchitecture='x86' publicKeyToken='1fc8b3b9a1e18e3b' />
-        *      </dependentAssembly>
-        *    </dependency>
-        *    <dependency>
-        *      <dependentAssembly>
-        *        <assemblyIdentity type='win32' name='Microsoft.VC90.MFC' version='9.0.21022.8 processorArchitecture='x86' publicKeyToken='1fc8b3b9a1e18e3b' />
-        *      </dependentAssembly>
-        *    </dependency>
-        *    <dependency>
-        *      <dependentAssembly>
-        *        <assemblyIdentity type='win32' name='Microsoft.Windows.Common-Controls version='6.0.0.0' processorArchitecture='x86' publicKeyToken='6595b64144ccf1df language="'*'" />
-        *      </dependentAssembly>
-        *    </dependency>
-        *  </assembly>
-        */
+     *  <?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+     *  <assembly xmlns='urn:schemas-microsoft-com:asm.v1' manifestVersion='1.0'>
+     *    <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+     *      <security>
+     *        <requestedPrivileges>
+     *          <requestedExecutionLevel level='asInvoker' uiAccess='false' />
+     *        </requestedPrivileges>
+     *      </security>
+     *    </trustInfo>
+     *    <dependency>
+     *      <dependentAssembly>
+     *        <assemblyIdentity type='win32' name='Microsoft.VC90.CRT' version='9.0.21022.8 processorArchitecture='x86' publicKeyToken='1fc8b3b9a1e18e3b' />
+     *      </dependentAssembly>
+     *    </dependency>
+     *    <dependency>
+     *      <dependentAssembly>
+     *        <assemblyIdentity type='win32' name='Microsoft.VC90.MFC' version='9.0.21022.8 processorArchitecture='x86' publicKeyToken='1fc8b3b9a1e18e3b' />
+     *      </dependentAssembly>
+     *    </dependency>
+     *    <dependency>
+     *      <dependentAssembly>
+     *        <assemblyIdentity type='win32' name='Microsoft.Windows.Common-Controls version='6.0.0.0' processorArchitecture='x86' publicKeyToken='6595b64144ccf1df language="'*'" />
+     *      </dependentAssembly>
+     *    </dependency>
+     *  </assembly>
+     */
 
     int retVal = 0;
+
+    // TODO: Won't work for XML containing wide char
+    MemBufInputSource xmlBuf((const XMLByte*)Manifest.c_str(), Manifest.size(), "sxs-manifest-xml");
 
     XercesDOMParser* parser = new XercesDOMParser();
     parser->setValidationScheme(XercesDOMParser::Val_Always);
@@ -369,7 +310,7 @@ SxsEntries SxsManifest::ExtractDependenciesFromSxsManifestFile(wstring ManifestF
     SxsEntries AdditionalDependencies;
 
     try {
-        parser->parse(ManifestFile.c_str());
+        parser->parse(xmlBuf);
 
         // get the DOM representation
         DOMDocument* doc = parser->getDocument();
@@ -413,7 +354,7 @@ SxsEntries SxsManifest::ExtractDependenciesFromSxsManifestFile(wstring ManifestF
             //         />
             //     </dependentAssembly>
             // </dependency>
-            const wstring assemblyIdentityPathStr = L"/assembly/dependency/dependentAssembly/assemblyIdentity";
+            const wstring assemblyIdentityPathStr = L"/dependency/dependentAssembly/assemblyIdentity";
             // find target PE
             //SxsEntries t;// = ExtractDependenciesFromSxsElement(assemblyIdentityPathStr, Folder, ExecutableName, Wow64Pe);
             //AdditionalDependencies.insert(AdditionalDependencies.end(), t.begin(), t.end());
@@ -445,86 +386,11 @@ SxsEntries SxsManifest::ExtractDependenciesFromSxsManifestFile(wstring ManifestF
     return AdditionalDependencies;
 }
 
-/*
-    SxsEntries SxsManifest::ExtractDependenciesFromSxsManifest(wstring ManifestStream, wstring Folder, wstring ExecutableName = L"", bool Wow64Pe = false) {
-        SxsEntries AdditionnalDependencies = new SxsEntries();
-
-        xml_document XmlManifest = ParseSxsManifest(ManifestStream);
-        XNamespace Namespace = XmlManifest.Root.GetDefaultNamespace();
-
-        // Find any declared dll
-        //< assembly xmlns = 'urn:schemas-microsoft-com:asm.v1' manifestVersion = '1.0' >
-        //    < assemblyIdentity name = 'additional_dll' version = 'XXX.YY.ZZ' type = 'win32' />
-        //    < file name = 'additional_dll.dll' />
-        //</ assembly >
-        foreach(XElement SxsAssembly in XmlManifest.Descendants(Namespace + "assembly")) {
-            AdditionnalDependencies.AddRange(SxsEntries.FromSxsAssembly(SxsAssembly, Namespace, Folder));
-        }
-
-
-
-        // Find any dependencies :
-        // <dependency>
-        //     <dependentAssembly>
-        //         <assemblyIdentity
-        //             type="win32"
-        //             name="Microsoft.Windows.Common-Controls"
-        //             version="6.0.0.0"
-        //             processorArchitecture="amd64"
-        //             publicKeyToken="6595b64144ccf1df"
-        //             language="*"
-        //         />
-        //     </dependentAssembly>
-        // </dependency>
-        foreach(XElement SxsAssembly in XmlManifest.Descendants(Namespace + "dependency")
-            .Elements(Namespace + "dependentAssembly")
-            .Elements(Namespace + "assemblyIdentity")
-        ) {
-            // find target PE
-            AdditionnalDependencies.AddRange(ExtractDependenciesFromSxsElement(SxsAssembly, Folder, ExecutableName, Wow64Pe));
-        }
-
-        return AdditionnalDependencies;
-    }
-
-    xml_document SxsManifest::ParseSxsManifest(System.IO.Stream ManifestStream) {
-        xml_document doc;
-        // You can use load_buffer to load document from immutable memory block:
-        xml_parse_result result = doc.load_buffer(PeManifest.c_str(), PeManifest.size());
-
-        XDocument XmlManifest = null;
-        // Hardcode namespaces for manifests since they are no always specified in the embedded manifests.
-        XmlNamespaceManager nsmgr = new XmlNamespaceManager(new NameTable());
-        nsmgr.AddNamespace(String.Empty, "urn:schemas-microsoft-com:asm.v1"); //default namespace : manifest V1
-        nsmgr.AddNamespace("asmv3", "urn:schemas-microsoft-com:asm.v3");      // sometimes missing from manifests : V3
-        nsmgr.AddNamespace("asmv3", "http://schemas.microsoft.com/SMI/2005/WindowsSettings");      // sometimes missing from manifests : V3
-        XmlParserContext context = new XmlParserContext(null, nsmgr, null, XmlSpace.Preserve);
-
-
-
-
-        using (StreamReader xStream = new StreamReader(ManifestStream)) {
-            // Trim double quotes in manifest attributes
-            // Example :
-            //      * Before : <assemblyIdentity name=""Microsoft.Windows.Shell.DevicePairingFolder"" processorArchitecture=""amd64"" version=""5.1.0.0"" type="win32" />
-            //      * After  : <assemblyIdentity name="Microsoft.Windows.Shell.DevicePairingFolder" processorArchitecture="amd64" version="5.1.0.0" type="win32" />
-
-            string PeManifest = xStream.ReadToEnd();
-            PeManifest = new Regex("\\\"\\\"([\\w\\d\\.]*)\\\"\\\"").Replace(PeManifest, "\"$1\""); // Regex magic here
-
-            // some manifests have "macros" that break xml parsing
-            PeManifest = new Regex("SXS_PROCESSOR_ARCHITECTURE").Replace(PeManifest, "\"amd64\"");
-            PeManifest = new Regex("SXS_ASSEMBLY_VERSION").Replace(PeManifest, "\"\"");
-            PeManifest = new Regex("SXS_ASSEMBLY_NAME").Replace(PeManifest, "\"\"");
-
-            using (XmlTextReader xReader = new XmlTextReader(PeManifest, XmlNodeType.Document, context)) {
-                XmlManifest = XDocument.Load(xReader);
-            }
-        }
-
-        return XmlManifest;
-    }
-*/
+SxsEntries SxsManifest::ExtractDependenciesFromSxsManifestFile(wstring ManifestFile, wstring Folder, wstring ExecutableName/* = L""*/, bool Wow64Pe/* = false*/) {
+    ifstream xmlText(ManifestFile);
+    string xmlStr((istreambuf_iterator<char>(xmlText)), istreambuf_iterator<char>());
+    return ExtractDependenciesFromSxsManifest(xmlStr, Folder, ExecutableName, Wow64Pe);
+}
 
 SxsEntries SxsManifest::GetSxsEntries(PEManager* Pe) {
     filesystem::path peFilePath = filesystem::path(Pe->filepath);
@@ -533,7 +399,7 @@ SxsEntries SxsManifest::GetSxsEntries(PEManager* Pe) {
 
     // Look for overriding manifest file (named "{$name}.manifest)
     wstring OverridingManifest = peFilePath / L".manifest";
-    OverridingManifest = L"C:\\Users\\admin\\Git\\github\\dwalker\\test\\sample.one.dll.manifest";
+    //OverridingManifest = L"C:\\Users\\admin\\Git\\github\\dwalker\\test\\sample.one.dll.manifest";
     if (filesystem::exists(OverridingManifest)) {
         return ExtractDependenciesFromSxsManifestFile(
             OverridingManifest,
@@ -544,18 +410,11 @@ SxsEntries SxsManifest::GetSxsEntries(PEManager* Pe) {
     }
 
     // Retrieve embedded manifest
-    wstring PeManifest = Pe->GetManifest();
+    string PeManifest = Pe->GetManifest();
     if (PeManifest.empty())
         return SxsEntries();
-    /*
-            return ExtractDependenciesFromSxsManifest(
-                PeManifest,
-                RootPeFolder,
-                RootPeFilename,
-                Pe->IsWow64Dll()
-            );
-    */
-    return ExtractDependenciesFromSxsManifestFile(
+
+    return ExtractDependenciesFromSxsManifest(
         PeManifest,
         RootPeFolder,
         RootPeFilename,

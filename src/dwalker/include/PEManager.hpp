@@ -89,7 +89,9 @@ public:
 
     // Retrieve the manifest embedded within the PE
     // Return an empty string if there is none.
-    std::wstring GetManifest();
+    // NOTE: Currently only support reading normal string (not wstring)
+    // because Xerces library doesn't seem to support that either
+    std::string GetManifest();
 
     // PE properties parsed from the NT header
     PeProperties* properties;

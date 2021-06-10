@@ -138,14 +138,11 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
         return 1;
     }
 
-    wstring filePath = L"C:\\Users\\admin\\Git\\github\\dwalker\\test\\sample.one.dll";
+    wstring filePath = L"C:\\Users\\shmishra\\Git\\github\\dwalker\\test\\sample.one.dll";
     //filePath = BINARY_PATH;
 
     DWalker dw;
     dw.DumpDependencyChain(filePath);
-    //dw.DumpDependencyChain(filePath);
-    //dw.DumpDependencyChain(filePath);
-    //dw.DumpDependencyChain(filePath);
 
     return 0;
 }
