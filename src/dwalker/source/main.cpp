@@ -127,22 +127,103 @@ int xercesDOMParser() {
     return 0;
 }
 
+void PrintUsage(const wchar_t* programName) {
+    wcout << L"DWalker - Windows Dependency Walker" << endl;
+    wcout << L"Usage: " << programName << L" [options] <PE_FILE>" << endl;
+    wcout << L"" << endl;
+    wcout << L"Options:" << endl;
+    wcout << L"  -h, --help      Show this help message" << endl;
+    wcout << L"  -v, --verbose   Show detailed information (search strategy, architecture, full paths)" << endl;
+    wcout << L"  -d, --depth N   Maximum recursion depth (default: 10)" << endl;
+    wcout << L"" << endl;
+    wcout << L"Examples:" << endl;
+    wcout << L"  " << programName << L" notepad.exe" << endl;
+    wcout << L"  " << programName << L" --verbose --depth 5 C:\\Windows\\System32\\kernel32.dll" << endl;
+}
+
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
-//    return xercesDOMParser();
-
-    PHLib* phlib = PHLib::GetInstance();
-
-    // always the first call to make
-    if (!phlib->InitializePhLib()) {
+    // Parse command line arguments
+    bool verbose = false;
+    int maxDepth = 10;
+    wstring targetFile;
+    
+    for (int i = 1; i < argc; i++) {
+        wstring arg = argv[i];
+        
+        if (arg == L"-h" || arg == L"--help") {
+            PrintUsage(argv[0]);
+            return 0;
+        }
+        else if (arg == L"-v" || arg == L"--verbose") {
+            verbose = true;
+        }
+        else if (arg == L"-d" || arg == L"--depth") {
+            if (i + 1 < argc) {
+                try {
+                    maxDepth = std::stoi(argv[++i]);
+                    if (maxDepth < 0) maxDepth = 0;
+                    if (maxDepth > 100) maxDepth = 100; // Reasonable limit
+                } catch (...) {
+                    wcerr << L"Error: Invalid depth value. Using default (10)." << endl;
+                    maxDepth = 10;
+                }
+            } else {
+                wcerr << L"Error: --depth requires a numeric argument." << endl;
+                return 1;
+            }
+        }
+        else if (arg[0] != L'-') {
+            // This should be the target file
+            if (targetFile.empty()) {
+                targetFile = arg;
+            } else {
+                wcerr << L"Error: Multiple target files specified. Only one file can be analyzed at a time." << endl;
+                return 1;
+            }
+        }
+        else {
+            wcerr << L"Error: Unknown option: " << arg << endl;
+            PrintUsage(argv[0]);
+            return 1;
+        }
+    }
+    
+    // Check if target file was provided
+    if (targetFile.empty()) {
+        wcerr << L"Error: No target file specified." << endl;
+        PrintUsage(argv[0]);
+        return 1;
+    }
+    
+    // Check if target file exists
+    if (!filesystem::exists(targetFile)) {
+        wcerr << L"Error: File not found: " << targetFile << endl;
         return 1;
     }
 
-    wstring filePath = L"C:\\Users\\shmishra\\Git\\github\\dwalker\\test\\sample.one.dll";
-    //filePath = BINARY_PATH;
+    // Initialize PHLib
+    PHLib* phlib = PHLib::GetInstance();
+    if (!phlib->InitializePhLib()) {
+        wcerr << L"Error: Failed to initialize PHLib." << endl;
+        return 1;
+    }
 
-    DWalker dw;
-    dw.DumpDependencyChain(filePath);
-
-    return 0;
+    // Create DWalker instance and configure it
+    DWalker dw(wcout);
+    dw.SetVerbose(verbose);
+    dw.SetMaxDepth(maxDepth);
+    
+    // Analyze dependencies
+    wcout << L"========================================" << endl;
+    bool success = dw.DumpDependencyChain(targetFile);
+    wcout << L"========================================" << endl;
+    
+    if (success) {
+        wcout << L"✅ Analysis completed successfully." << endl;
+        return 0;
+    } else {
+        wcerr << L"❌ Analysis failed or incomplete." << endl;
+        return 1;
+    }
 }

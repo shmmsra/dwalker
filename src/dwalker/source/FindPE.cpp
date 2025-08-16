@@ -1,4 +1,6 @@
 #include <filesystem>
+#include <sstream>
+#include <algorithm>
 //#include <shlwapi.h>
 #include <ShlObj.h>
 #include <Knownfolders.h>
@@ -156,21 +158,33 @@ pair<ModuleSearchStrategy, wstring> FindPE::FindPeFromDefault(
     // TODO(unknown): To be implemented
 
 
-    /*
-    // 7. Find in PATH
-    string PATH = Environment.GetEnvironmentVariable("PATH");
-    List<String> PATHFolders = new List<string>(PATH.Split(';'));
-    // Filter out empty paths, since it resolve to the current working directory
-    // fix https://github.com/lucasg/Dependencies/issues/51
-    PATHFolders = PATHFolders.Where(path = > path.Length != 0).ToList();
-    FoundPePath = FindPEFromPath(ModuleName, PATHFolders, Wow64Dll);
-    if (!FoundPePath.empty()) {
-        return pair<ModuleSearchStrategy, wstring>(
-            ModuleSearchStrategy::Environment,
-            FoundPePath
-        );
+    // 7. Find in PATH environment variable
+    wchar_t* pathEnv = nullptr;
+    size_t pathLen = 0;
+    if (_wdupenv_s(&pathEnv, &pathLen, L"PATH") == 0 && pathEnv != nullptr) {
+        wstring pathString(pathEnv);
+        free(pathEnv);
+        
+        vector<wstring> pathFolders;
+        wstringstream ss(pathString);
+        wstring folder;
+        
+        // Split PATH by semicolon
+        while (getline(ss, folder, L';')) {
+            // Filter out empty paths (they resolve to current directory)
+            if (!folder.empty()) {
+                pathFolders.push_back(folder);
+            }
+        }
+        
+        FoundPePath = FindPEFromPath(ModuleName, pathFolders, Wow64Dll);
+        if (!FoundPePath.empty()) {
+            return pair<ModuleSearchStrategy, wstring>(
+                ModuleSearchStrategy::Environment,
+                FoundPePath
+            );
+        }
     }
-    */
 
 
     // 8. Check if it's an absolute import
