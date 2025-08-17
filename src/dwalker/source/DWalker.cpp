@@ -2,6 +2,7 @@
 #include <PEManager.hpp>
 #include <BinaryCache.hpp>
 #include <filesystem>
+#include <Logger.hpp>
 
 using namespace std;
 
@@ -75,39 +76,41 @@ void DWalker::PrintModuleInfo(PEManager* peManager, ModuleSearchStrategy strateg
  * Recursively extract dependencies of the given file at filePath
  */
 bool DWalker::DumpDependencyChain(const wstring& filePath) {
-    wcout << L"Debug: DumpDependencyChain called with: " << filePath << endl;
+    LOG_DEBUG_FUNC(L"DumpDependencyChain", L"called with: " + filePath);
     processedFiles.clear();
-    wcout << L"Debug: About to print analysis header..." << endl;
+    LOG_DEBUG_FUNC(L"DumpDependencyChain", L"About to print analysis header...");
     
     try {
-        wcout << L"Debug: Getting filename from path..." << endl;
+        LOG_DEBUG_FUNC(L"DumpDependencyChain", L"Getting filename from path...");
         wstring filename = filesystem::path(filePath).filename();
-        wcout << L"Debug: Filename extracted: " << filename << endl;
+        LOG_DEBUG_FUNC_VAL(L"DumpDependencyChain", L"Filename extracted", filename);
         
-        wcout << L"Debug: Writing first output line..." << endl;
+        LOG_DEBUG_FUNC(L"DumpDependencyChain", L"Writing first output line...");
         *outputStream << L"[ANALYZE] Analyzing dependencies for: " << filename << endl;
-        wcout << L"Debug: First output line written successfully." << endl;
+        LOG_DEBUG_FUNC(L"DumpDependencyChain", L"First output line written successfully.");
         
-        wcout << L"Debug: Writing second output line..." << endl;
+        LOG_DEBUG_FUNC(L"DumpDependencyChain", L"Writing second output line...");
         *outputStream << L"[PATH] Full path: " << filePath << endl << endl;
-        wcout << L"Debug: Second output line written successfully." << endl;
+        LOG_DEBUG_FUNC(L"DumpDependencyChain", L"Second output line written successfully.");
     } catch (const std::exception& e) {
-        wcout << L"Debug: Exception caught: " << e.what() << endl;
+        wstring errorMsg = L"Exception caught: ";
+        errorMsg += wstring(e.what(), e.what() + strlen(e.what()));
+        LOG_ERROR(errorMsg);
         return false;
     } catch (...) {
-        wcout << L"Debug: Unknown exception caught!" << endl;
+        LOG_ERROR(L"Unknown exception caught!");
         return false;
     }
     
-    wcout << L"Debug: About to call DumpDependencyChainInternal..." << endl;
+    LOG_DEBUG_FUNC(L"DumpDependencyChain", L"About to call DumpDependencyChainInternal...");
     
     bool result = DumpDependencyChainInternal(filePath, 0);
-    wcout << L"Debug: DumpDependencyChainInternal returned: " << (result ? L"true" : L"false") << endl;
+    LOG_DEBUG_FUNC_VAL(L"DumpDependencyChain", L"DumpDependencyChainInternal returned", (result ? L"true" : L"false"));
     return result;
 }
 
 bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
-    wcout << L"Debug: DumpDependencyChainInternal called with depth " << depth << L" for: " << filePath << endl;
+    LOG_DEBUG_FUNC_VAL(L"DumpDependencyChainInternal", L"called with depth " + to_wstring(depth), filePath);
     
     // Prevent infinite recursion and respect max depth
     if (depth > maxDepth) {
@@ -126,15 +129,15 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
     processedFiles.insert(filePath);
     
     // Load the current user provided binary and save it in the cache as well
-    wcout << L"Debug: About to call BinaryCache::GetBinary..." << endl;
+    LOG_DEBUG_FUNC(L"DumpDependencyChainInternal", L"About to call BinaryCache::GetBinary...");
     PEManager* peManager = binaryCache->GetBinary(filePath);
-    wcout << L"Debug: BinaryCache::GetBinary returned: " << (peManager ? L"valid pointer" : L"nullptr") << endl;
+    LOG_DEBUG_FUNC_VAL(L"DumpDependencyChainInternal", L"BinaryCache::GetBinary returned", (peManager ? L"valid pointer" : L"nullptr"));
     if (!peManager) {
         PrintIndent();
         *outputStream << L"[ERROR] Failed to load: " << filesystem::path(filePath).filename() << endl;
         return false;
     }
-    wcout << L"Debug: PE file loaded successfully." << endl;
+    LOG_DEBUG_FUNC(L"DumpDependencyChainInternal", L"PE file loaded successfully.");
 
     // Print current module info (for root, strategy is ROOT)
     ModuleSearchStrategy rootStrategy = (depth == 0) ? ModuleSearchStrategy::ROOT : ModuleSearchStrategy::NOT_FOUND;

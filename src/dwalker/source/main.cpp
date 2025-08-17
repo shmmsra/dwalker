@@ -29,6 +29,7 @@
 
 #include <DWalker.hpp>
 #include <PHLib.hpp>
+#include <Logger.hpp>
 
 using namespace std;
 
@@ -132,13 +133,15 @@ void PrintUsage(const wchar_t* programName) {
     wcout << L"Usage: " << programName << L" [options] <PE_FILE>" << endl;
     wcout << L"" << endl;
     wcout << L"Options:" << endl;
-    wcout << L"  -h, --help      Show this help message" << endl;
-    wcout << L"  -v, --verbose   Show detailed information (search strategy, architecture, full paths)" << endl;
-    wcout << L"  -d, --depth N   Maximum recursion depth (default: 10)" << endl;
+    wcout << L"  -h, --help           Show this help message" << endl;
+    wcout << L"  -v, --verbose        Show detailed information (search strategy, architecture, full paths)" << endl;
+    wcout << L"  -d, --depth N        Maximum recursion depth (default: 10)" << endl;
+    wcout << L"  --log-level LEVEL    Set logging level: error, warn, info, debug (default: info)" << endl;
     wcout << L"" << endl;
     wcout << L"Examples:" << endl;
     wcout << L"  " << programName << L" notepad.exe" << endl;
     wcout << L"  " << programName << L" --verbose --depth 5 C:\\Windows\\System32\\kernel32.dll" << endl;
+    wcout << L"  " << programName << L" --log-level debug C:\\Windows\\System32\\notepad.exe" << endl;
 }
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
@@ -147,6 +150,7 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     bool verbose = false;
     int maxDepth = 10;
     wstring targetFile;
+    LogLevel logLevel = LogLevel::LOG_INFO;
     
     for (int i = 1; i < argc; i++) {
         wstring arg = argv[i];
@@ -170,6 +174,27 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
                 }
             } else {
                 wcerr << L"Error: --depth requires a numeric argument." << endl;
+                return 1;
+            }
+        }
+        else if (arg == L"--log-level") {
+            if (i + 1 < argc) {
+                wstring levelStr = argv[++i];
+                if (levelStr == L"error") {
+                    logLevel = LogLevel::LOG_ERROR;
+                } else if (levelStr == L"warn") {
+                    logLevel = LogLevel::LOG_WARN;
+                } else if (levelStr == L"info") {
+                    logLevel = LogLevel::LOG_INFO;
+                } else if (levelStr == L"debug") {
+                    logLevel = LogLevel::LOG_DEBUG;
+                } else {
+                    wcerr << L"Error: Invalid log level '" << levelStr << L"'. Using default (info)." << endl;
+                    wcerr << L"Valid levels: error, warn, info, debug" << endl;
+                    logLevel = LogLevel::LOG_INFO;
+                }
+            } else {
+                wcerr << L"Error: --log-level requires a level argument." << endl;
                 return 1;
             }
         }
@@ -202,27 +227,31 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
         return 1;
     }
 
+    // Initialize logger
+    Logger::Initialize(logLevel, wcout, wcerr);
+    LOG_INFO(L"Logger initialized with level: " + to_wstring(static_cast<int>(logLevel)));
+
     // Initialize PHLib
     PHLib* phlib = PHLib::GetInstance();
-    wcout << L"Debug: Getting PHLib instance..." << endl;
+    LOG_DEBUG_FUNC(L"main", L"Getting PHLib instance...");
     if (!phlib->InitializePhLib()) {
-        wcerr << L"Error: Failed to initialize PHLib." << endl;
+        LOG_ERROR(L"Failed to initialize PHLib.");
         return 1;
     }
-    wcout << L"Debug: PHLib initialized successfully." << endl;
+    LOG_INFO(L"PHLib initialized successfully.");
 
     // Create DWalker instance and configure it
-    wcout << L"Debug: Creating DWalker instance..." << endl;
+    LOG_DEBUG_FUNC(L"main", L"Creating DWalker instance...");
     DWalker dw(wcout);
     dw.SetVerbose(verbose);
     dw.SetMaxDepth(maxDepth);
-    wcout << L"Debug: DWalker configured." << endl;
+    LOG_INFO(L"DWalker configured successfully.");
     
     // Analyze dependencies
     wcout << L"========================================" << endl;
-    wcout << L"Debug: Starting dependency analysis..." << endl;
+    LOG_INFO(L"Starting dependency analysis...");
     bool success = dw.DumpDependencyChain(targetFile);
-    wcout << L"Debug: Analysis completed with result: " << (success ? L"true" : L"false") << endl;
+    LOG_INFO(L"Analysis completed with result: " + wstring(success ? L"true" : L"false"));
     wcout << L"========================================" << endl;
     
     if (success) {
