@@ -129,19 +129,27 @@ int xercesDOMParser() {
 }
 
 void PrintUsage(const wchar_t* programName) {
-    wcout << L"DWalker - Windows Dependency Walker" << endl;
-    wcout << L"Usage: " << programName << L" [options] <PE_FILE>" << endl;
-    wcout << L"" << endl;
+    wcout << L"Usage: " << programName << L" [OPTIONS] <target_file>" << endl;
     wcout << L"Options:" << endl;
-    wcout << L"  -h, --help           Show this help message" << endl;
-    wcout << L"  -v, --verbose        Show detailed information (search strategy, architecture, full paths)" << endl;
-    wcout << L"  -d, --depth N        Maximum recursion depth (default: 10)" << endl;
-    wcout << L"  --log-level LEVEL    Set logging level: error, warn, info, debug (default: info)" << endl;
-    wcout << L"" << endl;
+    wcout << L"  -v, --verbose       Enable verbose output" << endl;
+    wcout << L"  -d, --depth N       Maximum recursion depth (default: 10, max: 100)" << endl;
+    wcout << L"  --log-level LEVEL   Set logging level: error, warn, info, debug (default: info)" << endl;
+    wcout << L"  --json              Output in JSON format" << endl;
+    wcout << L"  -h, --help          Show this help message" << endl;
+    wcout << endl;
     wcout << L"Examples:" << endl;
-    wcout << L"  " << programName << L" notepad.exe" << endl;
-    wcout << L"  " << programName << L" --verbose --depth 5 C:\\Windows\\System32\\kernel32.dll" << endl;
+    wcout << L"  " << programName << L" C:\\Windows\\System32\\notepad.exe" << endl;
+    wcout << L"  " << programName << L" --verbose --depth 5 C:\\Windows\\System32\\notepad.exe" << endl;
     wcout << L"  " << programName << L" --log-level debug C:\\Windows\\System32\\notepad.exe" << endl;
+    wcout << L"  " << programName << L" --json C:\\Windows\\System32\\notepad.exe" << endl;
+    wcout << L"  " << programName << L" --json --depth 3 C:\\Windows\\System32\\notepad.exe" << endl;
+    wcout << endl;
+    wcout << L"Depth Control:" << endl;
+    wcout << L"  The --depth option controls how deep the dependency analysis goes." << endl;
+    wcout << L"  - Depth 0: Only the root executable" << endl;
+    wcout << L"  - Depth 1: Root + direct dependencies" << endl;
+    wcout << L"  - Depth 2: Root + direct + indirect dependencies" << endl;
+    wcout << L"  - And so on..." << endl;
 }
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
@@ -151,10 +159,10 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     int maxDepth = 10;
     wstring targetFile;
     LogLevel logLevel = LogLevel::LOG_INFO;
-    
+    bool jsonOutput = false;
+
     for (int i = 1; i < argc; i++) {
         wstring arg = argv[i];
-        
         if (arg == L"-h" || arg == L"--help") {
             PrintUsage(argv[0]);
             return 0;
@@ -164,16 +172,17 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
         }
         else if (arg == L"-d" || arg == L"--depth") {
             if (i + 1 < argc) {
-                try {
-                    maxDepth = std::stoi(argv[++i]);
-                    if (maxDepth < 0) maxDepth = 0;
-                    if (maxDepth > 100) maxDepth = 100; // Reasonable limit
-                } catch (...) {
-                    wcerr << L"Error: Invalid depth value. Using default (10)." << endl;
-                    maxDepth = 10;
+                maxDepth = _wtoi(argv[++i]);
+                if (maxDepth <= 0) {
+                    wcerr << L"Error: Depth must be a positive integer." << endl;
+                    return 1;
+                }
+                if (maxDepth > 100) {
+                    wcerr << L"Error: Depth cannot exceed 100. Using maximum allowed depth." << endl;
+                    maxDepth = 100;
                 }
             } else {
-                wcerr << L"Error: --depth requires a numeric argument." << endl;
+                wcerr << L"Error: -d/--depth requires a depth argument." << endl;
                 return 1;
             }
         }
@@ -198,6 +207,9 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
                 return 1;
             }
         }
+        else if (arg == L"--json") {
+            jsonOutput = true;
+        }
         else if (arg[0] != L'-') {
             // This should be the target file
             if (targetFile.empty()) {
@@ -208,7 +220,7 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
             }
         }
         else {
-            wcerr << L"Error: Unknown option: " << arg << endl;
+            wcerr << L"Error: Unknown option '" << arg << L"'" << endl;
             PrintUsage(argv[0]);
             return 1;
         }
@@ -250,7 +262,14 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     // Analyze dependencies
     wcout << L"========================================" << endl;
     LOG_INFO(L"Starting dependency analysis...");
-    bool success = dw.DumpDependencyChain(targetFile);
+    bool success;
+    
+    if (jsonOutput) {
+        success = dw.DumpDependencyChainJson(targetFile);
+    } else {
+        success = dw.DumpDependencyChain(targetFile);
+    }
+    
     LOG_INFO(L"Analysis completed with result: " + wstring(success ? L"true" : L"false"));
     wcout << L"========================================" << endl;
     

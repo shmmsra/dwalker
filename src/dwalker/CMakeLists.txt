@@ -4,6 +4,15 @@
 
 cmake_minimum_required(VERSION 3.14)
 
+# Add nlohmann/json dependency
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.2
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 set(DWALKER "dwalker")
 set(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../)
 set(THIRDPARTY_PHLIB_PATH "${PROJECT_ROOT_DIR}/src/thirdparty/ph")
@@ -40,7 +49,8 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Gz")
 target_link_libraries(${DWALKER}
     "Winhttp.lib"
     "${PROJECT_ROOT_DIR}/build/$<CONFIG>/phlib/phlib.lib"
-    "${PROJECT_ROOT_DIR}/build/xerces/install/lib/xerces-c_3D.lib")
+    "${PROJECT_ROOT_DIR}/build/xerces/install/lib/xerces-c_3D.lib"
+    nlohmann_json::nlohmann_json)
 
 set_target_properties(${DWALKER} PROPERTIES OUTPUT_NAME ${DWALKER_OUTPUT_NAME})
 set_target_properties(${DWALKER} PROPERTIES

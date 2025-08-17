@@ -3,6 +3,7 @@
 #include <BinaryCache.hpp>
 #include <filesystem>
 #include <Logger.hpp>
+#include <nlohmann/json.hpp> // Added for JSON output
 
 using namespace std;
 
@@ -30,18 +31,18 @@ void DWalker::PrintIndent() {
 
 const wchar_t* GetModuleSearchStrategyName(ModuleSearchStrategy strategy) {
     switch (strategy) {
-        case ModuleSearchStrategy::ROOT: return L"ROOT";
-        case ModuleSearchStrategy::SxS: return L"SxS";
-        case ModuleSearchStrategy::ApiSetSchema: return L"ApiSet";
-        case ModuleSearchStrategy::WellKnownDlls: return L"KnownDLL";
-        case ModuleSearchStrategy::ApplicationDirectory: return L"AppDir";
-        case ModuleSearchStrategy::System32Folder: return L"System32";
-        case ModuleSearchStrategy::WindowsFolder: return L"Windows";
-        case ModuleSearchStrategy::WorkingDirectory: return L"WorkDir";
-        case ModuleSearchStrategy::Environment: return L"PATH";
-        case ModuleSearchStrategy::Fullpath: return L"FullPath";
-        case ModuleSearchStrategy::UserDefined: return L"UserDef";
-        case ModuleSearchStrategy::NOT_FOUND: return L"NOT_FOUND";
+        case ROOT: return L"ROOT";
+        case SxS: return L"SxS";
+        case ApiSetSchema: return L"ApiSet";
+        case WellKnownDlls: return L"KnownDLL";
+        case ApplicationDirectory: return L"AppDir";
+        case System32Folder: return L"System32";
+        case WindowsFolder: return L"Windows";
+        case WorkingDirectory: return L"WorkDir";
+        case Environment: return L"PATH";
+        case Fullpath: return L"FullPath";
+        case UserDefined: return L"UserDef";
+        case NOT_FOUND: return L"NOT_FOUND";
         default: return L"Unknown";
     }
 }
@@ -134,7 +135,7 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
     LOG_DEBUG_FUNC(L"DumpDependencyChainInternal", L"PE file loaded successfully.");
 
     // Print current module info (for root, strategy is ROOT)
-    ModuleSearchStrategy rootStrategy = (depth == 0) ? ModuleSearchStrategy::ROOT : ModuleSearchStrategy::NOT_FOUND;
+    ModuleSearchStrategy rootStrategy = (depth == 0) ? ROOT : NOT_FOUND;
     if (depth == 0) {
         PrintModuleInfo(peManager, rootStrategy);
     }
@@ -150,6 +151,7 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
         return true;
     }
 
+    // Set indent level for child dependencies
     indentLevel = depth + 1;
     
     for (auto& import : imports) {
@@ -172,13 +174,14 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
         // Print module info for new modules
         PrintModuleInfo(result.second, result.first);
         
-        if (result.first == ModuleSearchStrategy::NOT_FOUND) {
+        if (result.first == NOT_FOUND) {
             // Continue with other dependencies even if one is not found
             continue;
         }
         
         if (result.second) {
             // Recursively analyze dependencies only for new modules
+            // Pass depth + 1 to increment the depth level
             if (!DumpDependencyChainInternal(result.second->filepath, depth + 1)) {
                 // Continue even if recursive analysis fails
                 continue;
@@ -186,5 +189,171 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
         }
     }
 
+    return true;
+}
+
+// JSON output methods
+void DWalker::OutputJsonHeader(const std::wstring& filename, const std::wstring& fullPath) {
+    // Create the main JSON structure
+    json analysis = {
+        {"analysis", {
+            {"target", std::string(filename.begin(), filename.end())},
+            {"fullPath", std::string(fullPath.begin(), fullPath.end())},
+            {"timestamp", "2024-01-01T00:00:00Z"},
+            {"dependencies", json::array()}
+        }}
+    };
+    
+    // Store the JSON object for later use
+    jsonOutput = analysis;
+}
+
+void DWalker::OutputJsonFooter() {
+    // Output the complete JSON - convert to wide string for wide stream output
+    std::string jsonStr = jsonOutput.dump(2);
+    std::wstring jsonWStr(jsonStr.begin(), jsonStr.end());
+    *outputStream << jsonWStr << std::endl;
+}
+
+void DWalker::OutputModuleJson(PEManager* peManager, ModuleSearchStrategy strategy, int depth) {
+    if (!peManager) {
+        json moduleJson = {
+            {"type", "not_found"},
+            {"strategy", "NOT_FOUND"},
+            {"depth", depth}
+        };
+        jsonOutput["analysis"]["dependencies"].push_back(moduleJson);
+        return;
+    }
+    
+    wstring fileName = filesystem::path(peManager->filepath).filename();
+    wstring strategyName = GetModuleSearchStrategyName(strategy);
+    
+    json moduleJson = {
+        {"type", "module"},
+        {"name", std::string(fileName.begin(), fileName.end())},
+        {"depth", depth}
+    };
+    
+    if (verbose) {
+        moduleJson["strategy"] = std::string(strategyName.begin(), strategyName.end());
+        moduleJson["architecture"] = peManager->IsWow64Dll() ? "32-bit" : "64-bit";
+        moduleJson["path"] = std::string(peManager->filepath.begin(), peManager->filepath.end());
+    }
+    
+    jsonOutput["analysis"]["dependencies"].push_back(moduleJson);
+}
+
+void DWalker::OutputCircularJson(const std::wstring& filename, int depth) {
+    json circularJson = {
+        {"type", "circular"},
+        {"name", std::string(filename.begin(), filename.end())},
+        {"depth", depth}
+    };
+    jsonOutput["analysis"]["dependencies"].push_back(circularJson);
+}
+
+bool DWalker::DumpDependencyChainJson(const std::wstring& filePath) {
+    LOG_DEBUG_FUNC(L"DumpDependencyChainJson", L"called with: " + filePath);
+    processedFiles.clear();
+    
+    try {
+        wstring filename = filesystem::path(filePath).filename();
+        OutputJsonHeader(filename, filePath);
+        
+        bool result = DumpDependencyChainInternalJson(filePath, 0);
+        
+        OutputJsonFooter();
+        return result;
+    } catch (const std::exception& e) {
+        wstring errorMsg = L"Exception caught: ";
+        errorMsg += wstring(e.what(), e.what() + strlen(e.what()));
+        LOG_ERROR(errorMsg);
+        return false;
+    } catch (...) {
+        LOG_ERROR(L"Unknown exception caught!");
+        return false;
+    }
+}
+
+bool DWalker::DumpDependencyChainInternalJson(const std::wstring& filePath, int depth) {
+    LOG_DEBUG_FUNC_VAL(L"DumpDependencyChainInternalJson", L"called with depth " + to_wstring(depth), filePath);
+    
+    // Prevent infinite recursion and respect max depth
+    if (depth > maxDepth) {
+        // Add a warning entry to JSON when max depth is reached
+        json warningJson = {
+            {"type", "warning"},
+            {"message", "Maximum depth reached (" + std::to_string(maxDepth) + ")"}
+        };
+        jsonOutput["analysis"]["dependencies"].push_back(warningJson);
+        return true;
+    }
+    
+    // Mark this file as processed
+    processedFiles.insert(filePath);
+    
+    // Load the current user provided binary and save it in the cache as well
+    PEManager* peManager = binaryCache->GetBinary(filePath);
+    if (!peManager) {
+        return false;
+    }
+    
+    // Print current module info (for root, strategy is ROOT)
+    ModuleSearchStrategy rootStrategy = (depth == 0) ? ROOT : NOT_FOUND;
+    if (depth == 0) {
+        OutputModuleJson(peManager, rootStrategy, depth);
+    }
+    
+    // Get the list of dependencies for the binary
+    vector<PeImportDll> imports = peManager->GetImports();
+    
+    if (imports.empty()) {
+        if (depth == 0) {
+            // Add "no dependencies" entry to JSON
+            json noDepsJson = {
+                {"type", "info"},
+                {"message", "No dependencies found"}
+            };
+            jsonOutput["analysis"]["dependencies"].push_back(noDepsJson);
+        }
+        return true;
+    }
+    
+    for (auto& import : imports) {
+        wstring moduleName = wstring(import.Name.begin(), import.Name.end());
+        
+        std::pair<ModuleSearchStrategy, PEManager*> result = 
+            binaryCache->ResolveModule(peManager, moduleName);
+        
+        // Check if this module is already processed
+        bool isAlreadyProcessed = false;
+        if (result.second) {
+            isAlreadyProcessed = (processedFiles.find(result.second->filepath) != processedFiles.end());
+        }
+        
+        if (isAlreadyProcessed) {
+            // Skip this module entirely - don't print anything
+            continue;
+        }
+        
+        // Print module info for new modules
+        OutputModuleJson(result.second, result.first, depth + 1);
+        
+        if (result.first == NOT_FOUND) {
+            // Continue with other dependencies even if one is not found
+            continue;
+        }
+        
+        if (result.second) {
+            // Recursively analyze dependencies only for new modules
+            // Pass depth + 1 to increment the depth level
+            if (!DumpDependencyChainInternalJson(result.second->filepath, depth + 1)) {
+                // Continue even if recursive analysis fails
+                continue;
+            }
+        }
+    }
+    
     return true;
 }
