@@ -204,26 +204,32 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 
     // Initialize PHLib
     PHLib* phlib = PHLib::GetInstance();
+    wcout << L"Debug: Getting PHLib instance..." << endl;
     if (!phlib->InitializePhLib()) {
         wcerr << L"Error: Failed to initialize PHLib." << endl;
         return 1;
     }
+    wcout << L"Debug: PHLib initialized successfully." << endl;
 
     // Create DWalker instance and configure it
+    wcout << L"Debug: Creating DWalker instance..." << endl;
     DWalker dw(wcout);
     dw.SetVerbose(verbose);
     dw.SetMaxDepth(maxDepth);
+    wcout << L"Debug: DWalker configured." << endl;
     
     // Analyze dependencies
     wcout << L"========================================" << endl;
+    wcout << L"Debug: Starting dependency analysis..." << endl;
     bool success = dw.DumpDependencyChain(targetFile);
+    wcout << L"Debug: Analysis completed with result: " << (success ? L"true" : L"false") << endl;
     wcout << L"========================================" << endl;
     
     if (success) {
-        wcout << L"✅ Analysis completed successfully." << endl;
+        wcout << L"[SUCCESS] Analysis completed successfully." << endl;
         return 0;
     } else {
-        wcerr << L"❌ Analysis failed or incomplete." << endl;
+        wcerr << L"[ERROR] Analysis failed or incomplete." << endl;
         return 1;
     }
 }
