@@ -119,13 +119,7 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
         return true;
     }
     
-    // Check for circular dependencies
-    if (processedFiles.find(filePath) != processedFiles.end()) {
-        PrintIndent();
-        *outputStream << L"[CIRCULAR] [CIRCULAR] " << filesystem::path(filePath).filename() << endl;
-        return true;
-    }
-    
+    // Mark this file as processed
     processedFiles.insert(filePath);
     
     // Load the current user provided binary and save it in the cache as well
@@ -164,6 +158,18 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
         std::pair<ModuleSearchStrategy, PEManager*> result = 
             binaryCache->ResolveModule(peManager, moduleName);
         
+        // Check if this module is already processed
+        bool isAlreadyProcessed = false;
+        if (result.second) {
+            isAlreadyProcessed = (processedFiles.find(result.second->filepath) != processedFiles.end());
+        }
+        
+        if (isAlreadyProcessed) {
+            // Skip this module entirely - don't print anything
+            continue;
+        }
+        
+        // Print module info for new modules
         PrintModuleInfo(result.second, result.first);
         
         if (result.first == ModuleSearchStrategy::NOT_FOUND) {
@@ -172,7 +178,7 @@ bool DWalker::DumpDependencyChainInternal(const wstring& filePath, int depth) {
         }
         
         if (result.second) {
-            // Recursively analyze dependencies
+            // Recursively analyze dependencies only for new modules
             if (!DumpDependencyChainInternal(result.second->filepath, depth + 1)) {
                 // Continue even if recursive analysis fails
                 continue;
