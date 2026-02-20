@@ -41,3 +41,112 @@ bool DWalker::DumpDependencyChain(const wstring& filePath) {
 
     return true;
 }
+
+string EscapeJsonString(const string& input) {
+    string output = "";
+    for (char c : input) {
+        if (c == '"') output += "\\\"";
+        else if (c == '\\') output += "\\\\";
+        else if (c == '\b') output += "\\b";
+        else if (c == '\f') output += "\\f";
+        else if (c == '\n') output += "\\n";
+        else if (c == '\r') output += "\\r";
+        else if (c == '\t') output += "\\t";
+        else output += c;
+    }
+    return output;
+}
+
+string DWalker::DumpDependencyChainJsonRecursive(const wstring& filePath, std::set<wstring>& visited) {
+    string name; for (wchar_t c : filePath) name += (char)c; // Simple conversion for ASCII paths
+    string json = "{";
+    json += "\"name\": \"" + EscapeJsonString(name) + "\"";
+    
+    if (visited.find(filePath) != visited.end()) {
+        json += "}";
+        return json;
+    }
+    visited.insert(filePath);
+
+    PEManager* peManager = binaryCache->GetBinary(filePath);
+    if (!peManager) {
+        json += "}";
+        return json;
+    }
+
+    vector<PeImportDll> imports = peManager->GetImports();
+    if (!imports.empty()) {
+        std::set<wstring> currentLevelDeps;
+        json += ", \"dependencies\": [";
+        bool first = true;
+        for (auto& x : imports) {
+            wstring modName(x.Name.begin(), x.Name.end());
+            std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, modName);
+            wstring depId = t.second ? t.second->filepath : modName;
+
+            if (currentLevelDeps.find(depId) != currentLevelDeps.end()) {
+                continue; // Skip duplicates at the same level (e.g. api-ms-win resolved to same dll)
+            }
+            currentLevelDeps.insert(depId);
+
+            if (t.second) {
+                if (!first) json += ", ";
+                json += DumpDependencyChainJsonRecursive(t.second->filepath, visited);
+                first = false;
+            } else {
+                if (!first) json += ", ";
+                json += "{\"name\": \"" + EscapeJsonString(x.Name) + "\", \"error\": \"not found\"}";
+                first = false;
+            }
+        }
+        json += "]";
+    }
+    json += "}";
+    return json;
+}
+
+string DWalker::DumpDependencyChainJson(const wstring& filePath) {
+    std::set<wstring> visited;
+    return DumpDependencyChainJsonRecursive(filePath, visited);
+}
+
+string DWalker::DumpDependencyChainTextRecursive(const wstring& filePath, std::set<wstring>& visited, int depth) {
+    string name; for (wchar_t c : filePath) name += (char)c;
+    string indent(depth * 2, ' ');
+    string text = indent + name + "\n";
+    
+    if (visited.find(filePath) != visited.end()) {
+        return text;
+    }
+    visited.insert(filePath);
+
+    PEManager* peManager = binaryCache->GetBinary(filePath);
+    if (!peManager) {
+        return text;
+    }
+
+    vector<PeImportDll> imports = peManager->GetImports();
+    std::set<wstring> currentLevelDeps;
+    for (auto& x : imports) {
+        wstring modName(x.Name.begin(), x.Name.end());
+        std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, modName);
+        wstring depId = t.second ? t.second->filepath : modName;
+
+        if (currentLevelDeps.find(depId) != currentLevelDeps.end()) {
+            continue; // Skip duplicates at the same level
+        }
+        currentLevelDeps.insert(depId);
+
+        if (t.second) {
+            text += DumpDependencyChainTextRecursive(t.second->filepath, visited, depth + 1);
+        } else {
+            text += indent + "  " + x.Name + " (NOT FOUND)\n";
+        }
+    }
+    return text;
+}
+
+string DWalker::DumpDependencyChainText(const wstring& filePath) {
+    std::set<wstring> visited;
+    return DumpDependencyChainTextRecursive(filePath, visited, 0);
+}
