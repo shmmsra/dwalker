@@ -18,6 +18,6 @@ public:
     std::string DumpDependencyChainText(const std::wstring& filePath);
 
 private:
-    std::string DumpDependencyChainJsonRecursive(const std::wstring& filePath, std::set<std::wstring>& visited);
+    std::string DumpDependencyChainJsonRecursive(const std::wstring& filePath, std::set<std::wstring>& visited, int depth);
     std::string DumpDependencyChainTextRecursive(const std::wstring& filePath, std::set<std::wstring>& visited, int depth);
 };

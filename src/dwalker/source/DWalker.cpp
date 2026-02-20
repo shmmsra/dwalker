@@ -57,27 +57,31 @@ string EscapeJsonString(const string& input) {
     return output;
 }
 
-string DWalker::DumpDependencyChainJsonRecursive(const wstring& filePath, std::set<wstring>& visited) {
+string DWalker::DumpDependencyChainJsonRecursive(const wstring& filePath, std::set<wstring>& visited, int depth) {
     string name; for (wchar_t c : filePath) name += (char)c; // Simple conversion for ASCII paths
-    string json = "{";
-    json += "\"name\": \"" + EscapeJsonString(name) + "\"";
+    
+    string indent(depth * 4, ' ');
+    string innerIndent((depth + 1) * 4, ' ');
+
+    string json = "{\n";
+    json += innerIndent + "\"name\": \"" + EscapeJsonString(name) + "\"";
     
     if (visited.find(filePath) != visited.end()) {
-        json += "}";
+        json += "\n" + indent + "}";
         return json;
     }
     visited.insert(filePath);
 
     PEManager* peManager = binaryCache->GetBinary(filePath);
     if (!peManager) {
-        json += "}";
+        json += "\n" + indent + "}";
         return json;
     }
 
     vector<PeImportDll> imports = peManager->GetImports();
     if (!imports.empty()) {
         std::set<wstring> currentLevelDeps;
-        json += ", \"dependencies\": [";
+        json += ",\n" + innerIndent + "\"dependencies\": [\n";
         bool first = true;
         for (auto& x : imports) {
             wstring modName(x.Name.begin(), x.Name.end());
@@ -90,24 +94,30 @@ string DWalker::DumpDependencyChainJsonRecursive(const wstring& filePath, std::s
             currentLevelDeps.insert(depId);
 
             if (t.second) {
-                if (!first) json += ", ";
-                json += DumpDependencyChainJsonRecursive(t.second->filepath, visited);
+                if (!first) json += ",\n";
+                string itemIndent((depth + 2) * 4, ' ');
+                json += itemIndent + DumpDependencyChainJsonRecursive(t.second->filepath, visited, depth + 2);
                 first = false;
             } else {
-                if (!first) json += ", ";
-                json += "{\"name\": \"" + EscapeJsonString(x.Name) + "\", \"error\": \"not found\"}";
+                if (!first) json += ",\n";
+                string itemIndent((depth + 2) * 4, ' ');
+                string innerItemIndent((depth + 3) * 4, ' ');
+                json += itemIndent + "{\n";
+                json += innerItemIndent + "\"name\": \"" + EscapeJsonString(x.Name) + "\",\n";
+                json += innerItemIndent + "\"error\": \"not found\"\n";
+                json += itemIndent + "}";
                 first = false;
             }
         }
-        json += "]";
+        json += "\n" + innerIndent + "]";
     }
-    json += "}";
+    json += "\n" + indent + "}";
     return json;
 }
 
 string DWalker::DumpDependencyChainJson(const wstring& filePath) {
     std::set<wstring> visited;
-    return DumpDependencyChainJsonRecursive(filePath, visited);
+    return DumpDependencyChainJsonRecursive(filePath, visited, 0);
 }
 
 string DWalker::DumpDependencyChainTextRecursive(const wstring& filePath, std::set<wstring>& visited, int depth) {
