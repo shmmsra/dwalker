@@ -58,7 +58,7 @@ string EscapeJsonString(const string& input) {
 }
 
 string DWalker::DumpDependencyChainJsonRecursive(const wstring& filePath, std::set<wstring>& visited) {
-    string name(filePath.begin(), filePath.end()); // Simple conversion for ASCII paths
+    string name; for (wchar_t c : filePath) name += (char)c; // Simple conversion for ASCII paths
     string json = "{";
     json += "\"name\": \"" + EscapeJsonString(name) + "\"";
     
@@ -76,10 +76,19 @@ string DWalker::DumpDependencyChainJsonRecursive(const wstring& filePath, std::s
 
     vector<PeImportDll> imports = peManager->GetImports();
     if (!imports.empty()) {
+        std::set<wstring> currentLevelDeps;
         json += ", \"dependencies\": [";
         bool first = true;
         for (auto& x : imports) {
-            std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, wstring(x.Name.begin(), x.Name.end()));
+            wstring modName(x.Name.begin(), x.Name.end());
+            std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, modName);
+            wstring depId = t.second ? t.second->filepath : modName;
+
+            if (currentLevelDeps.find(depId) != currentLevelDeps.end()) {
+                continue; // Skip duplicates at the same level (e.g. api-ms-win resolved to same dll)
+            }
+            currentLevelDeps.insert(depId);
+
             if (t.second) {
                 if (!first) json += ", ";
                 json += DumpDependencyChainJsonRecursive(t.second->filepath, visited);
@@ -102,7 +111,7 @@ string DWalker::DumpDependencyChainJson(const wstring& filePath) {
 }
 
 string DWalker::DumpDependencyChainTextRecursive(const wstring& filePath, std::set<wstring>& visited, int depth) {
-    string name(filePath.begin(), filePath.end());
+    string name; for (wchar_t c : filePath) name += (char)c;
     string indent(depth * 2, ' ');
     string text = indent + name + "\n";
     
@@ -117,8 +126,17 @@ string DWalker::DumpDependencyChainTextRecursive(const wstring& filePath, std::s
     }
 
     vector<PeImportDll> imports = peManager->GetImports();
+    std::set<wstring> currentLevelDeps;
     for (auto& x : imports) {
-        std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, wstring(x.Name.begin(), x.Name.end()));
+        wstring modName(x.Name.begin(), x.Name.end());
+        std::pair<ModuleSearchStrategy, PEManager*> t = binaryCache->ResolveModule(peManager, modName);
+        wstring depId = t.second ? t.second->filepath : modName;
+
+        if (currentLevelDeps.find(depId) != currentLevelDeps.end()) {
+            continue; // Skip duplicates at the same level
+        }
+        currentLevelDeps.insert(depId);
+
         if (t.second) {
             text += DumpDependencyChainTextRecursive(t.second->filepath, visited, depth + 1);
         } else {
