@@ -129,20 +129,32 @@ int xercesDOMParser() {
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 {
-//    return xercesDOMParser();
-
     PHLib* phlib = PHLib::GetInstance();
 
     // always the first call to make
     if (!phlib->InitializePhLib()) {
+        std::cerr << "Failed to initialize PHLib\n";
         return 1;
     }
 
-    wstring filePath = L"C:\\Users\\shmishra\\Git\\github\\dwalker\\test\\sample.one.dll";
-    //filePath = BINARY_PATH;
+    if (argc < 2) {
+        std::wcout << L"Usage: dwalker.exe <path_to_exe_or_dll> [--json]\n";
+        return 1;
+    }
+
+    wstring filePath = argv[1];
+    bool useJson = false;
+
+    if (argc >= 3 && std::wstring(argv[2]) == L"--json") {
+        useJson = true;
+    }
 
     DWalker dw;
-    dw.DumpDependencyChain(filePath);
+    if (useJson) {
+        std::cout << dw.DumpDependencyChainJson(filePath) << "\n";
+    } else {
+        std::cout << dw.DumpDependencyChainText(filePath) << "\n";
+    }
 
     return 0;
 }
