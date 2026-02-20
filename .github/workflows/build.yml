@@ -1,18 +1,14 @@
-name: Build DWalker
+name: Build
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
-    types: [closed]
+    branches: [ main ]
 
 jobs:
   build:
-    # Build only if it's a direct push to main, or a PR that was merged into main.
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    name: Build DWalker for Windows
     runs-on: windows-latest
 
     steps:
@@ -29,10 +25,3 @@ jobs:
         run: |
           cd build
           cmake --build . --config Release
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dwalker-windows-x64
-          path: build\Release\dwalker\dwalker.exe
-          if-no-files-found: error
